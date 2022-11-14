@@ -1,11 +1,11 @@
 {
   "name": "betterlogiclibrary",
-  "version": "0.1.1",
+  "version": "0.1.3",
   "description": "The Better Logic Library for Athom's Homey",
   "main": "dist/bl.js",
   "types": "./dist/bl.d.ts",
   "scripts": {
-    "publish": "echo \"Running TS defs\" && npx tsc -p ../nl.qluster-it.BetterLogicLibrary/tsconfig.json && npx tsc && npm publish"
+    "publish-bll": "echo \"Running TS defs\" & npx tsc -p ../nl.qluster-it.BetterLogicLibrary/tsconfig.json & npx tsc & npm publish"
   },
   "repository": {
     "type": "git",

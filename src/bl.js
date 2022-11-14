@@ -37,12 +37,12 @@ static async decode(text, {locale, timeZone}={}) { //text, {locale}
 
     /**
      * Indicates if the BLL has been loaded before     *
-     * @readonly @static @memberof BL */
+     * @static @memberof BL */
     static get isLoaded() { return _isLoaded; }
 
     /**
      * @description The lodash library
-     * @readonly @static @memberof BL */
+     * @static @memberof BL */
     static get _() { if (_) return _; throw new Error('BLL: Lodash has not been loaded.'); }
 
     /** @private */
@@ -50,40 +50,26 @@ static async decode(text, {locale, timeZone}={}) { //text, {locale}
 
     /**
      * @description The DateTime library, used for converting date and times to strings formatted for the user.
-     * @type {typeof import('../dist/dateTime')} @readonly @static @memberof BL */
+     * @type {typeof import('../dist/dateTime')} @static @memberof BL */
     static get datetime() { if (datetime) return datetime; throw new Error('BLL: DateTime has not been loaded.'); }
 
     /** @private */
     static set datetime(val) { datetime = val; }
-    
-    // /**
-    //  * Creates an instance of BL.
-    //  * @param {[{ homey:String, modules, silent, waitTime, waitForBll }]} [{ homey, modules, silent, waitTime, waitForBll }] @memberof BL
-    //  */
-    // constructor({ homey, modules, silent, waitTime, waitForBll } = {}) {
-    //     if (BL._current) return BL._current;
-    //     BL._current = this;
-    //     BL.homey = homey;
-        
-    //     this.homey = homey;
-    //     this.silent = silent === undefined ? (!modules || !modules.length) : silent;
-    //     this.modules = modules;
-    //     this.waitTime = waitTime;
-    //     if(waitForBll===undefined || waitForBll ===null) this.waitForBll = modules && modules.length;
-    //     this.waitForBll = waitForBll;
-        
-    //     return this.init();
-    // }
-
     /**
      *
      *
      * @static
-     * @param {*} [{ homey, modules, silent, waitTime, waitForBll }={}]
+     * @param {*} [{ homey, modules, silent, waitTime, required }={}]
      * @return {*} 
      * @memberof BL
      */
-    static async init({ homey, modules, silent, waitTime, waitForBll } = {}) {
+    static async init({ homey, modules, silent, waitTime, required } = {}) {
+        return new BL().init({ homey, modules, silent, waitTime, required });
+    }
+
+
+    /** @private */
+    async init({ homey, modules, silent, waitTime, required } = {}) {
         if (BL._current) return BL._current;
         BL._current = this;
         BL.homey = homey;
@@ -92,16 +78,9 @@ static async decode(text, {locale, timeZone}={}) { //text, {locale}
         this.silent = silent === undefined ? (!modules || !modules.length) : silent;
         this.modules = modules;
         this.waitTime = waitTime;
-        if(waitForBll===undefined || waitForBll ===null) this.waitForBll = modules && modules.length;
-        this.waitForBll = waitForBll;
-        
-        return await this.init();
-    }
+        this.required = required === undefined ? (modules && modules.length) : required;
+        //this.required = required;
 
-
-    /** @private */
-    async init() {
-        
         let defer = new Defer(5 * 60 * 1000, null, () => {
             if (this.silent === false) {
                 this.homey.notifications.createNotification({ excerpt: 'Warning: Better Logic Library could not be loaded and is required! Install the Better Logic Library App to continue to use this app.' });
@@ -127,9 +106,16 @@ static async decode(text, {locale, timeZone}={}) { //text, {locale}
             });
             _isLoaded = await this.api.getInstalled();
             if (!_isLoaded) {
-                if (!this.waitForBll) defer.resolve(this);
+                if(this.required) {
+                    if(!await this.homey.settings.get('notification_bll_required')) {
+                        this.homey.notifications.createNotification({excerpt : `Warning: The Better Logic Library App is required for this app (to support BLL Coding and (massively) reduce install sizes).\nPlease install the Better Logic Library App from the Athom Store.` });
+                        this.homey.settings.set('notification_bll_required', true);
+                    }
+                    return defer.promise;
+                }
+                if (!this.required) defer.resolve(this);
                 return defer.promise;
-            }
+            } else this.homey.settings.set('notification_bll_required', true);
         }
         this.initBll().then(x => { defer.resolve(this); }).catch(x => defer.reject(this));
 

@@ -19,33 +19,38 @@ export class BL {
     }, ...args: any[]): string;
     /**
      * Indicates if the BLL has been loaded before     *
-     * @readonly @static @memberof BL */
-    static readonly get isLoaded(): boolean;
+     * @static @memberof BL */
+    static get isLoaded(): boolean;
     /** @private */
-    static readonly set _(arg: any);
+    static set _(arg: any);
     /**
      * @description The lodash library
-     * @readonly @static @memberof BL */
-    static readonly get _(): any;
+     * @static @memberof BL */
+    static get _(): any;
     /** @private */
-    static readonly set datetime(arg: typeof import("../dist/dateTime"));
+    static set datetime(arg: typeof import("../dist/dateTime"));
     /**
      * @description The DateTime library, used for converting date and times to strings formatted for the user.
-     * @type {typeof import('../dist/dateTime')} @readonly @static @memberof BL */
-    static readonly get datetime(): typeof import("../dist/dateTime");
+     * @type {typeof import('../dist/dateTime')} @static @memberof BL */
+    static get datetime(): typeof import("../dist/dateTime");
     /**
      *
      *
      * @static
-     * @param {*} [{ homey, modules, silent, waitTime, waitForBll }={}]
+     * @param {*} [{ homey, modules, silent, waitTime, required }={}]
      * @return {*}
      * @memberof BL
      */
-    static init({ homey, modules, silent, waitTime, waitForBll }?: any): any;
+    static init({ homey, modules, silent, waitTime, required }?: any): any;
     /** @private */
     private get l();
     /** @private */
     private init;
+    homey: any;
+    silent: any;
+    modules: any;
+    waitTime: any;
+    required: any;
     api: any;
     /** @private */
     private initBll;

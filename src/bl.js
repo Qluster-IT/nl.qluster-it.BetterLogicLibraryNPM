@@ -23,13 +23,14 @@ class BL {
    * @description Decode the given {@link String} for any BLL codings and returns the decoded string.
    * @static
    * @async
-   * @param {string} text
+   * @param {string} text The text which could contain BLL coding and needs be be converted.
    * @return {string} A decoded {@link String} if BLL is running, otherwise it will return the original {@link String}.
    * @memberof BL
    */  
-static async decode(text, opts={locale, timeZone}) { //text, {locale}
+static async decode(text, {locale, timeZone}={}) { //text, {locale}
         if (!BL.l && !this.silent) throw new Error('Better Logic Library is not loaded.');
-        if (!BL.l) return !text ? text : typeof(text)=='object' ? text.text : text;
+        if (!BL.l) return text;        
+        //return await BL.l.decode(text, options);
         return await BL.l.decode.apply(null, arguments);             
     }
 
@@ -58,8 +59,9 @@ static async decode(text, opts={locale, timeZone}) { //text, {locale}
     /**
      * Creates an instance of BL.
      * @param {[{ homey:String, modules, silent, waitTime, waitForBll }={ waitForBll: true }]} [{ homey, modules, silent, waitTime, waitForBll }={ waitForBll: true }] @memberof BL
+     * @returns {String} Returns a Promise! You can await this contructor.
      */
-    constructor({ homey, modules, silent, waitTime, waitForBll } = { waitForBll: true }) {
+    constructor({ homey, modules, silent, waitTime, waitForBll } = {}) {
         if (BL._current) return BL._current;
         BL._current = this;
         BL.homey = homey;
@@ -68,9 +70,14 @@ static async decode(text, opts={locale, timeZone}) { //text, {locale}
         this.silent = silent === undefined ? (!modules || !modules.length) : silent;
         this.modules = modules;
         this.waitTime = waitTime;
-        this.waitForBll = waitForBll;        
+        if(waitForBll===undefined || waitForBll ===null) this.waitForBll = modules && modules.length;
+        this.waitForBll = waitForBll;
         
         return this.init();
+    }
+
+    static async init({ homey, modules, silent, waitTime, waitForBll } = {}) {
+        return await new BL({ homey, modules, silent, waitTime, waitForBll });
     }
 
 
@@ -102,7 +109,7 @@ static async decode(text, opts={locale, timeZone}) { //text, {locale}
             });
             _isLoaded = await this.api.getInstalled();
             if (!_isLoaded) {
-                if (!this.waitForBll) defer.resolve();
+                if (!this.waitForBll) defer.resolve(this);
                 return defer.promise;
             }
         }

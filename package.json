@@ -1,11 +1,12 @@
 {
   "name": "betterlogiclibrary",
-  "version": "0.1.3",
+  "version": "0.2.2",
   "description": "The Better Logic Library for Athom's Homey",
-  "main": "dist/bl.js",
+  "main": "src/bl.js",
   "types": "./dist/bl.d.ts",
   "scripts": {
-    "publish-bll": "echo \"Running TS defs\" & npx tsc -p ../nl.qluster-it.BetterLogicLibrary/tsconfig.json & npx tsc & npm publish"
+    "prepublishOnly": "echo \"Running TS defs\" & npx tsc -p ../nl.qluster-it.BetterLogicLibrary/tsconfig.json & npx tsc",
+    "postinstall": "echo ________________________________________________________________________________________________________________________ && echo \"\"  && echo Better Logic Library && echo Remember to add BLL to the permissions in your app.json: \"permissions\": [\"homey:app:net.i-dev.betterlogic\"] && echo ________________________________________________________________________________________________________________________"
   },
   "repository": {
     "type": "git",

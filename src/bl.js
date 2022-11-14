@@ -87,6 +87,10 @@ static async decode(text, {locale, timeZone}={}) { //text, {locale}
                 defer.reject(this);
             } else defer.resolve(this);
         });
+        if(!await this.homey.settings.get('notification_bll_supported')) {
+            this.homey.notifications.createNotification({excerpt : `This app now supports BLL coding within flowcards.\nInstall the Better Logic Library App from the Athom Store to use the BLL coding.` });
+            this.homey.settings.set('notification_bll_supported', true);
+        }
         if (!this.api) {
             this.api = await this.getAppApi('net.i-dev.betterlogic', 'Better Logic Library', true);
 

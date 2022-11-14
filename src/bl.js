@@ -56,12 +56,34 @@ static async decode(text, {locale, timeZone}={}) { //text, {locale}
     /** @private */
     static set datetime(val) { datetime = val; }
     
+    // /**
+    //  * Creates an instance of BL.
+    //  * @param {[{ homey:String, modules, silent, waitTime, waitForBll }]} [{ homey, modules, silent, waitTime, waitForBll }] @memberof BL
+    //  */
+    // constructor({ homey, modules, silent, waitTime, waitForBll } = {}) {
+    //     if (BL._current) return BL._current;
+    //     BL._current = this;
+    //     BL.homey = homey;
+        
+    //     this.homey = homey;
+    //     this.silent = silent === undefined ? (!modules || !modules.length) : silent;
+    //     this.modules = modules;
+    //     this.waitTime = waitTime;
+    //     if(waitForBll===undefined || waitForBll ===null) this.waitForBll = modules && modules.length;
+    //     this.waitForBll = waitForBll;
+        
+    //     return this.init();
+    // }
+
     /**
-     * Creates an instance of BL.
-     * @param {[{ homey:String, modules, silent, waitTime, waitForBll }={ waitForBll: true }]} [{ homey, modules, silent, waitTime, waitForBll }={ waitForBll: true }] @memberof BL
-     * @returns {String} Returns a Promise! You can await this contructor.
+     *
+     *
+     * @static
+     * @param {*} [{ homey, modules, silent, waitTime, waitForBll }={}]
+     * @return {*} 
+     * @memberof BL
      */
-    constructor({ homey, modules, silent, waitTime, waitForBll } = {}) {
+    static async init({ homey, modules, silent, waitTime, waitForBll } = {}) {
         if (BL._current) return BL._current;
         BL._current = this;
         BL.homey = homey;
@@ -73,11 +95,7 @@ static async decode(text, {locale, timeZone}={}) { //text, {locale}
         if(waitForBll===undefined || waitForBll ===null) this.waitForBll = modules && modules.length;
         this.waitForBll = waitForBll;
         
-        return this.init();
-    }
-
-    static async init({ homey, modules, silent, waitTime, waitForBll } = {}) {
-        return await new BL({ homey, modules, silent, waitTime, waitForBll });
+        return await this.init();
     }
 
 

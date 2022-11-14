@@ -5,7 +5,7 @@
   "main": "src/bl.js",
   "types": "./dist/bl.d.ts",
   "scripts": {
-    "prepublishOnly": "echo \"Running TS defs\" & npx tsc -p ../nl.qluster-it.BetterLogicLibrary/tsconfig.json & npx tsc",
+    "prepublishOnly": "echo \"Running TS defs\" && npx tsc -p ../nl.qluster-it.BetterLogicLibrary/tsconfig.json && npx tsc",
     "postinstall": "echo ________________________________________________________________________________________________________________________ && echo \"\"  && echo Better Logic Library && echo Remember to add BLL to the permissions in your app.json: \"permissions\": [\"homey:app:net.i-dev.betterlogic\"] && echo ________________________________________________________________________________________________________________________"
   },
   "repository": {

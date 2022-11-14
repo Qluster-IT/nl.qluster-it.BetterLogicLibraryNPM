@@ -33,34 +33,17 @@ export class BL {
      * @description The DateTime library, used for converting date and times to strings formatted for the user.
      * @type {typeof import('../dist/dateTime')} @readonly @static @memberof BL */
     static readonly get datetime(): typeof import("../dist/dateTime");
-    static init({ homey, modules, silent, waitTime, waitForBll }?: {
-        homey: any;
-        modules: any;
-        silent: any;
-        waitTime: any;
-        waitForBll: any;
-    }): Promise<BL>;
     /**
-     * Creates an instance of BL.
-     * @param {[{ homey:String, modules, silent, waitTime, waitForBll }={ waitForBll: true }]} [{ homey, modules, silent, waitTime, waitForBll }={ waitForBll: true }] @memberof BL
-     * @returns {String} Returns a Promise! You can await this contructor.
+     *
+     *
+     * @static
+     * @param {*} [{ homey, modules, silent, waitTime, waitForBll }={}]
+     * @return {*}
+     * @memberof BL
      */
-    constructor({ homey, modules, silent, waitTime, waitForBll }?: [{
-        homey: string;
-        modules;
-        silent;
-        waitTime;
-        waitForBll;
-    }, {
-        waitForBll: true;
-    }]);
+    static init({ homey, modules, silent, waitTime, waitForBll }?: any): any;
     /** @private */
     private get l();
-    homey: any;
-    silent: any;
-    modules: any;
-    waitTime: any;
-    waitForBll: any;
     /** @private */
     private init;
     api: any;

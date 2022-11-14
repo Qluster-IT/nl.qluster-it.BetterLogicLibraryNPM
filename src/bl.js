@@ -37,12 +37,12 @@ static async decode(text, {locale, timeZone}={}) { //text, {locale}
 
     /**
      * Indicates if the BLL has been loaded before     *
-     * @static @memberof BL */
+     * @static*/
     static get isLoaded() { return _isLoaded; }
 
     /**
      * @description The lodash library
-     * @static @memberof BL */
+     * @static*/
     static get _() { if (_) return _; throw new Error('BLL: Lodash has not been loaded.'); }
 
     /** @private */
@@ -50,18 +50,19 @@ static async decode(text, {locale, timeZone}={}) { //text, {locale}
 
     /**
      * @description The DateTime library, used for converting date and times to strings formatted for the user.
-     * @type {typeof import('../dist/dateTime')} @static @memberof BL */
+     * @type {typeof import('../dist/dateTime')} @static*/
     static get datetime() { if (datetime) return datetime; throw new Error('BLL: DateTime has not been loaded.'); }
+
 
     /** @private */
     static set datetime(val) { datetime = val; }
+
+
     /**
-     *
-     *
+     *     *
      * @static
      * @param {*} [{ homey, modules, silent, waitTime, required }={}]
      * @return {*} 
-     * @memberof BL
      */
     static async init({ homey, modules, silent, waitTime, required } = {}) {
         return new BL().init({ homey, modules, silent, waitTime, required });
@@ -83,12 +84,12 @@ static async decode(text, {locale, timeZone}={}) { //text, {locale}
 
         let defer = new Defer(5 * 60 * 1000, null, () => {
             if (this.silent === false) {
-                this.homey.notifications.createNotification({ excerpt: 'Warning: Better Logic Library could not be loaded and is required! Install the Better Logic Library App to continue to use this app.' });
+                this.homey.notifications.createNotification({ excerpt: `Warning: Better Logic Library could not be loaded and is required! Install the Better Logic Library App to continue to use this app (${this.homey.app.id}).` });
                 defer.reject(this);
             } else defer.resolve(this);
         });
-        if(!await this.homey.settings.get('notification_bll_supported')) {
-            this.homey.notifications.createNotification({excerpt : `This app now supports BLL coding within flowcards.\nInstall the Better Logic Library App from the Athom Store to use BLL coding.\nSee the BLL App Settings for more information.` });
+        if(this.homey.app.id!=='net.i-dev.betterlogic' && !await this.homey.settings.get('notification_bll_supported')) {
+            this.homey.notifications.createNotification({excerpt : `This app (${this.homey.app.id}) now supports BLL coding within flowcards.\nInstall the Better Logic Library App from the Athom Store to use BLL coding.\nSee the BLL App Settings for more information.` });
             this.homey.settings.set('notification_bll_supported', true);
         }
         if (!this.api) {
@@ -112,7 +113,7 @@ static async decode(text, {locale, timeZone}={}) { //text, {locale}
             if (!_isLoaded) {
                 if(this.required) {
                     if(!await this.homey.settings.get('notification_bll_required')) {
-                        this.homey.notifications.createNotification({excerpt : `Warning: The Better Logic Library App is required for this app (to support BLL Coding and (massively) reduce install sizes).\nPlease install the Better Logic Library App from the Athom Store.` });
+                        this.homey.notifications.createNotification({excerpt : `Warning: The Better Logic Library App is required for this app (${this.homey.app.id}) (to support BLL Coding and reduce install size).\nPlease install the Better Logic Library App from the Athom Store.` });
                         this.homey.settings.set('notification_bll_required', true);
                     }
                     return defer.promise;

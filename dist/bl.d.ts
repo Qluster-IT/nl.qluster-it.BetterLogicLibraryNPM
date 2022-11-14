@@ -19,27 +19,25 @@ export class BL {
     }, ...args: any[]): string;
     /**
      * Indicates if the BLL has been loaded before     *
-     * @static @memberof BL */
+     * @static*/
     static get isLoaded(): boolean;
     /** @private */
     static set _(arg: any);
     /**
      * @description The lodash library
-     * @static @memberof BL */
+     * @static*/
     static get _(): any;
     /** @private */
     static set datetime(arg: typeof import("../dist/dateTime"));
     /**
      * @description The DateTime library, used for converting date and times to strings formatted for the user.
-     * @type {typeof import('../dist/dateTime')} @static @memberof BL */
+     * @type {typeof import('../dist/dateTime')} @static*/
     static get datetime(): typeof import("../dist/dateTime");
     /**
-     *
-     *
+     *     *
      * @static
      * @param {*} [{ homey, modules, silent, waitTime, required }={}]
      * @return {*}
-     * @memberof BL
      */
     static init({ homey, modules, silent, waitTime, required }?: any): any;
     /** @private */

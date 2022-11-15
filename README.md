@@ -1,10 +1,13 @@
 *If you are a User and want to know more about how to use the new **BLL coding**, goto the* [[APP][Pro] Better Logic Library - For Users](https://community.homey.app/t/app-pro-better-logic-library-for-users/71876) Forum Topic.
 
+*If you are a App Developer and want to know more about how to include this into your App or how to let your App support BLL coding, goto the* [[APP][Pro] Better Logic Library - For Developers](https://community.homey.app/t/app-pro-better-logic-library-for-developers/71761) Forum Topic.
+
 Part of: [Better Logic Library - Just some better logic, variable and library management](https://community.homey.app/t/app-pro-better-logic-just-some-better-logic-and-variable-management/5568)
+
 
 ## Homey's first real Library: Better Logic Library!
 
-The [Better Logic](https://homey.app/a/net.i-dev.betterlogic/) App has a new addition: A library and library management for other apps to consume.
+The [Better Logic](https://homey.app/a/net.i-dev.betterlogic/) App has a new addition: Libraries and a library management for other apps to consume.
 
 # The new Decoder
 BLL now has new expression cards, but also a new coding for text arguments within flowcards.

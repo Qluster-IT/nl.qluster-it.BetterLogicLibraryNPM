@@ -76,10 +76,10 @@ static async decode(text, {locale, timeZone}={}) { //text, {locale}
         BL.homey = homey;
         
         this.homey = homey;
-        this.silent = silent === undefined ? (!modules || !modules.length) : silent;
+        this.required = required === undefined ? (modules && modules.length) : required;
+        this.silent = silent === undefined ? (!modules || !modules.length || !this.required) : silent;
         this.modules = modules;
         this.waitTime = waitTime;
-        this.required = required === undefined ? (modules && modules.length) : required;
         //this.required = required;
 
         let defer = new Defer(5 * 60 * 1000, null, () => {

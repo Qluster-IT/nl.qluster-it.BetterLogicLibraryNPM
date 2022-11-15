@@ -122,7 +122,7 @@ static async decode(text, {locale, timeZone}={}) { //text, {locale}
                 return defer.promise;
             } else this.homey.settings.set('notification_bll_required', true);
         }
-        this.initBll().then(x => { defer.resolve(this); }).catch(x => defer.reject(this));
+        this.initBll().then(x => { defer.resolve(this); }).catch(x => {if (!this.required) defer.resolve(this); else defer.reject(this);} );
 
         return defer.promise;
 

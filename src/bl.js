@@ -16,7 +16,7 @@ class BL {
     get l() { return _l; }
 
     /** @private */
-    static get l() { return BL.L.Current; }
+    static get l() { return BL && BL.L ? BL.L.Current : null; }
    
 
   /**
@@ -28,7 +28,7 @@ class BL {
    * @memberof BL
    */  
 static async decode(text, {locale, timeZone}={}) { //text, {locale}
-        if (!BL.l && !this.silent) throw new Error('Better Logic Library is not loaded.');
+        if (!BL.l && BL && BL.Current && !BL.Current.silent) throw new Error('Better Logic Library is not loaded.');
         if (!BL.l) return text;        
         //return await BL.l.decode(text, options);
         return await BL.l.decode.apply(null, arguments);             

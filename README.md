@@ -11,9 +11,9 @@ The [Better Logic](https://homey.app/a/net.i-dev.betterlogic/) App has a new add
 
 # The new Decoder
 BLL now has new expression cards, but also a new coding for text arguments within flowcards.
-For instance, when you place this within a textargument: ```Hello, today is {[date("dddd")]}```, BLL will automaticly find those expressions within the texts and decode/execute them.
+For instance, when you place this within a textargument: ```Hello, today is {[date("dddd")]}```, BLL will automaticly find those expressions within the texts and decode them, resulting in - Hello, today is monday - .
 
-Users currency have access to lodash, mathjs and basic javascript commands.
+Users currently have access to lodash, mathjs, basic javascript methods and customisable methods through the BLL App Settings.
 But also the custom **DateTime** and **Number** module.
 A user can for instance use this within the Save Image Token flowcard from the [FTP Client App](https://homey.app/a/nl.qluster-it.FtpClient/).
 ![image|325x88](https://global.discourse-cdn.com/business4/uploads/athom/original/3X/c/b/cbdf7a46238eb6597776874ea66ce83adf3b2e2f.png)

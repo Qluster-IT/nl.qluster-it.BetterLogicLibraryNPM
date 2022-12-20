@@ -24,7 +24,7 @@ class BL {
    * @static
    * @async
    * @param {string} text The text which could contain BLL coding and needs be be converted.
-   * @return {string} A decoded {@link String} if BLL is running, otherwise it will return the original {@link String}.
+   * @return {Promise<string>} A decoded {@link String} if BLL is running, otherwise it will return the original {@link String}.
    * @memberof BL
    */  
 static async decode(text, {locale, timeZone}={}) { //text, {locale}
@@ -84,7 +84,7 @@ static async decode(text, {locale, timeZone}={}) { //text, {locale}
 
         let defer = new Defer(15 * 60 * 1000, null, () => {
             if (this.silent === false) {
-                this.homey.notifications.createNotification({ excerpt: `Warning: Better Logic Library could not be loaded and is required! Install the Better Logic Library App to continue to use this app (${this.homey.app.id}).` });
+                this.homey.notifications.createNotification({ excerpt: `Warning: Better Logic Library could not be loaded and is required! Install the Better Logic Library App to continue to use this app (${this.homey.app.id}). (0)` });
                 defer.reject(new Error('The Better Logic Library could not be loaded.'));
             } else defer.resolve(this);
         });
@@ -117,7 +117,7 @@ static async decode(text, {locale, timeZone}={}) { //text, {locale}
             if (!_isLoaded) {
                 if(this.required) {
                     if(!await this.homey.settings.get('notification_bll_required')) {
-                        this.homey.notifications.createNotification({excerpt : `Warning: The Better Logic Library App is required for this app (${this.homey.app.id}) (to support BLL Coding and reduce install size).\nPlease install the Better Logic Library App from the Athom Store.` });
+                        this.homey.notifications.createNotification({excerpt : `Warning: The Better Logic Library App is required for this app (${this.homey.app.id}) (to support BLL Coding and reduce install size).\nPlease install the Better Logic Library App from the Athom Store. (1)` });
                         this.homey.settings.set('notification_bll_required', true);
                     }
                     return defer.promise;
@@ -126,7 +126,15 @@ static async decode(text, {locale, timeZone}={}) { //text, {locale}
                 return defer.promise;
             } else this.homey.settings.set('notification_bll_required', true);
         }
-        this.initBll().then(x => { defer.resolve(this); }).catch(x => {if (!this.required) defer.resolve(this); else defer.reject(this);} );
+        this.initBll().then(x => { defer.resolve(this); }).catch(x => {
+            if (!this.required) defer.resolve(this); 
+            else {
+                if (this.silent === false) {
+                    this.homey.notifications.createNotification({ excerpt: `Warning: Better Logic Library could not be loaded and is required! Install the Better Logic Library App to continue to use this app (${this.homey.app.id}). (2)` });
+                }
+                defer.reject(new Error('The Better Logic Library could not be loaded.'));
+            }
+        } );
 
         return defer.promise;
 

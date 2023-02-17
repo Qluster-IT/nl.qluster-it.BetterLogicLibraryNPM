@@ -1,7 +1,7 @@
 export class BL {
     /** @private @type {BL} */
     private static get Current();
-    /** @private */
+    /** @private @type {import("../dist/bll").BLL */
     private static get L();
     /** @private */
     private static get l();
@@ -33,6 +33,12 @@ export class BL {
      * @description The DateTime library, used for converting date and times to strings formatted for the user.
      * @type {typeof import('../dist/dateTime')} @static*/
     static get datetime(): typeof import("../dist/dateTime");
+    /** @private */
+    static set proto(arg: typeof import("../dist/proto"));
+    /**
+     * @description The DateTime library, used for converting date and times to strings formatted for the user.
+     * @type {typeof import('../dist/proto')} @static*/
+    static get proto(): typeof import("../dist/proto");
     /**
      *     *
      * @static
@@ -40,7 +46,7 @@ export class BL {
      * @return {*}
      */
     static init({ homey, modules, silent, waitTime, required }?: any): any;
-    /** @private */
+    /** @private @type {import("../dist/bll").BLL} */
     private get l();
     /** @private */
     private init;

@@ -5,14 +5,15 @@ export class BLL {
     static get math(): any;
     static get datetime(): any;
     static get dateTime(): any;
-    /**@type {Homey} */
-    static get homey(): Homey;
+    static get proto(): any;
+    /**@type {Object} */
+    static get homey(): any;
     /**
      * @param {Object} options
      */
     constructor({ homey, modules, silent }?: any);
-    /**@type {Homey} */
-    get homey(): Homey;
+    /**@type {Object} */
+    get homey(): any;
     silent: any;
     destroy(): void;
     init({ modules }?: {

@@ -1,7 +1,7 @@
 let _version;
 let _L; // statics
 let _l;
-let _, datetime;
+let _, datetime, proto;
 let _isLoaded = false;
 
 
@@ -9,10 +9,10 @@ class BL {
     /** @private @type {BL} */
     static get Current() { return this._current; }
 
-    /** @private */
+    /** @private @type {import("../dist/bll").BLL */
     static get L() { return _L; }
 
-    /** @private */
+    /** @private @type {import("../dist/bll").BLL} */
     get l() { return _l; }
 
     /** @private */
@@ -56,7 +56,16 @@ static async decode(text, {locale, timeZone}={}) { //text, {locale}
 
     /** @private */
     static set datetime(val) { datetime = val; }
+    
+    /**
+     * @description The DateTime library, used for converting date and times to strings formatted for the user.
+     * @type {typeof import('../dist/proto')} @static*/
+     static get proto() { if (proto) return proto; throw new Error('BLL: Proto has not been loaded.'); }
 
+     /** @private */
+     static set proto(val) { proto = val; }
+
+     
 
     /**
      *     *
@@ -98,6 +107,7 @@ static async decode(text, {locale, timeZone}={}) { //text, {locale}
             } catch (error) {
                 this.homey.error(error);
             }
+            
 
             if (this.homey.app.id !== 'net.i-dev.betterlogic') this.api.on('realtime', async (event) => {
                 if (event === 'running') {
@@ -139,7 +149,7 @@ static async decode(text, {locale, timeZone}={}) { //text, {locale}
         bblFile = await this.getLibrary('bll');
         let bll = this.requireFromString(bblFile.file, '');
         try {
-            let old_bll = _l;
+            let old_bll = this.l;
             _l = await new bll.BLL({ homey: this.homey, modules: this.modules, silent: this.silent });
             _L = bll.BLL;
             if(old_bll) old_bll.destroy();

@@ -218,4 +218,4 @@ class Defer {
 }
 
 
-module.exports = { BL };
+module.exports = { BL, Defer };

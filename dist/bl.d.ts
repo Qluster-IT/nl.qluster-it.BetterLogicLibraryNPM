@@ -65,4 +65,24 @@ export class BL {
     /** @private */
     private getAppApi;
 }
+export class Defer {
+    /**
+     * @param {Number} timeout
+     */
+    constructor(timeout: number, originalPromise: any, onTimeout: any);
+    set isDefered(arg: boolean);
+    get isDefered(): boolean;
+    _isDefered: any;
+    set promise(arg: any);
+    get promise(): any;
+    _promise: any;
+    _resolve: any;
+    _reject: any;
+    timeout: any;
+    then(fun: any): void;
+    catch(fun: any): void;
+    finally(fun: any): void;
+    resolve(val1: any, val2: any, val3: any, val4: any): any;
+    reject(val1: any, val2: any, val3: any, val4: any): any;
+}
 //# sourceMappingURL=bl.d.ts.map

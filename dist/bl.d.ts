@@ -52,6 +52,7 @@ export class BL {
     static init({ homey, modules, silent, waitTime, required }?: any): any;
     /** @private @type {import("../dist/bll").BLL} */
     private get l();
+    realtimeFunction(event: any): Promise<void>;
     /** @private */
     private init;
     homey: any;
@@ -59,6 +60,7 @@ export class BL {
     silent: any;
     modules: any;
     waitTime: any;
+    defer: any;
     api: any;
     /** @private */
     private initBll;

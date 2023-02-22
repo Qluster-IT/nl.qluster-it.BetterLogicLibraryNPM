@@ -107,10 +107,10 @@ class BL {
     async realtimeFunction(event) {
         if (event === 'running') {
             let x = async () => {
-                await this.initBll({ version: await this.api.getVersion() });
-                if (this.defer && !this.defer.isDefered) this.defer.resolve(this);
+                await BL.Current.initBll({ version: await BL.Current.api.getVersion() });
+                if (BL.Current.defer && !BL.Current.defer.isDefered) BL.Current.defer.resolve(this);
             };
-            if (this.api.getInstalled()) x();
+            if (BL.Current.api.getInstalled()) x();
 
             else {
                 BL.homey.setTimeout(x, 15000);

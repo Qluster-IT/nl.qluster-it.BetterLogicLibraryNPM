@@ -17,6 +17,10 @@ export class BL {
         locale: any;
         timeZone: any;
     }, ...args: any[]): Promise<string>;
+    static getDownloadUrl({ base64, contentType }?: {
+        base64: any;
+        contentType: any;
+    }): Promise<any>;
     /**
      * Indicates if the BLL has been loaded before     *
      * @static*/

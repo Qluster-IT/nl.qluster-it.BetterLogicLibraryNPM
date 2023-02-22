@@ -27,13 +27,23 @@ class BL {
    * @return {Promise<string>} A decoded {@link String} if BLL is running, otherwise it will return the original {@link String}.
    * @memberof BL
    */  
-static async decode(text, {locale, timeZone}={}) { //text, {locale}
+    static async decode(text, {locale, timeZone}={}) { //text, {locale}
         if (!BL.l && BL && BL.Current && !BL.Current.silent) throw new Error('Better Logic Library is not loaded.');
         if (!BL.l) return text;        
         //return await BL.l.decode(text, options);
         return await BL.l.decode.apply(null, arguments);             
     }
 
+    static async getDownloadUrl({base64, contentType} = {}) {
+        if (!BL.l && BL && BL.Current && !BL.Current.silent) throw new Error('Better Logic Library is not loaded.');
+        if (!BL.l) return text;
+        try {         
+            let api = await BL.Current.getAppApi('net.i-dev.betterlogic', 'Better Logic Library', true);
+            return await api.post('/getdownloadurl/', {base64, contentType});
+        } catch (error) {
+            throw new Error(error);
+        }
+    }
 
     /**
      * Indicates if the BLL has been loaded before     *

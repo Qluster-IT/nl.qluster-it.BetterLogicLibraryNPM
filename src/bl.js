@@ -97,11 +97,11 @@ class BL {
     static get isLoaded() { return _isLoaded; }
 
     static async isInit() {
-        try {            
-            await BL.Current.init();
-        } catch (error) {
+        // try {            
+        //     await BL.Current.init();
+        // } catch (error) {
             
-        }
+        // }
         if (!BL.l && BL && BL.Current && !BL.Current.silent) throw new Error('Better Logic Library is not loaded.');
         if(!BL.l) return false;
         return true;
@@ -211,7 +211,7 @@ class BL {
         else initDefer = new Defer();
         if(_isLoaded) return;
         if (!this.api) {
-            try {
+            try {                
                 this.api = await this.getAppApi('net.i-dev.betterlogic', 'Better Logic Library', true);//true);
                 if (this.homey.app.id !== 'net.i-dev.betterlogic') this.api.on('realtime', this.realtimeFunction);
             } catch (error) {

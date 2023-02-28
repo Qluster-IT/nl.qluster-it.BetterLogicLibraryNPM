@@ -4,6 +4,10 @@ let _l;
 let _, datetime, proto;
 let _isLoaded = false;
 
+//var querystring = require('querystring');
+var http = require('http');
+
+let _homey, _modules, _silent, _waitTime, _required;
 
 class BL {
     /** @private @type {BL} */
@@ -27,19 +31,56 @@ class BL {
      * @return {Promise<string>} A decoded {@link String} if BLL is running, otherwise it will return the original {@link String}.
      * @memberof BL
      */
-    static async decode(text, { locale, timeZone } = {}) { //text, {locale}
+    static async decode(text, { locale, timeZone } = {}) {
         if (!BL.l && BL && BL.Current && !BL.Current.silent) throw new Error('Better Logic Library is not loaded.');
         if (!BL.l) return text;
         //return await BL.l.decode(text, options);
         return await BL.l.decode.apply(null, arguments);
     }
 
-    static async getDownloadUrl({ base64, contentType } = {}) {
+    static async getDownloadUrl({ base64, contentType, buffer, json, text } = {}) {
         if (!BL.l && BL && BL.Current && !BL.Current.silent) throw new Error('Better Logic Library is not loaded.');
         if (!BL.l) return text;
         try {
             let api = await BL.Current.getAppApi('net.i-dev.betterlogic', 'Better Logic Library', true);
-            return await api.post('/getdownloadurl/', { base64, contentType });
+            //let link = await api.post('/getdownloadurl/', { base64, contentType }); base 64 is to big, send it separate.
+            let link = await api.post('/getdownloadurl/', { contentType });
+            let type = 'base64';
+            if (buffer) type = 'application/octet-stream';
+            else if (json) type = 'text/json';
+            else if (text) type = 'text/plain';
+
+
+            let send = buffer || base64 || json || text;
+            if (send) {
+                var post_options = {
+                    host: (await BL.homey.cloud.getLocalAddress()).split(':')[0],
+                    port: '47330',
+                    path: link.path,
+                    method: 'POST',
+                    headers: {
+                        'Accept': contentType,
+                        'Content-Type': type,
+                        'Content-Length': buffer ? Buffer.byteLength(buffer) : send.length
+                    }
+                };
+
+                // Set up the request
+                var post_req = http.request(post_options, function (res) {
+                    res.setEncoding('utf8');
+                    res.on('data', function (chunk) {
+                        console.log('Response: ' + chunk);
+                    });
+                });
+
+                // post the data
+                //let typeee = typeof(buffer);
+                //let _buffer = Buffer.from(buffer);
+                post_req.write(send);
+                post_req.end();
+            }
+
+            return link;
         } catch (error) {
             throw new Error(error);
         }
@@ -83,25 +124,28 @@ class BL {
      * @param {*} [{ homey, modules, silent, waitTime, required }={}]
      * @return {*} 
      */
-    static async init({ homey, modules, silent, waitTime, required } = {}) {
+    static async init({ homey, modules, silent, waitTime, required, onLoaded } = {}) {
         homey.app.__BL_OnUninit = homey.app.onUninit;
         let getApi = () => { return this.Current ? this.Current.api : null; };
         homey.app.onUninit = async function (args) {
             let api = getApi();
             try {
-             
-                if (api && BL.Current) api.off('realtime', BL.Current.realtimeFunction);   
+                if (api && BL.Current) api.off('realtime', BL.Current.realtimeFunction);
             } catch (error) {
                 console.log(error);
             }
             try {
-                if(args) await this.__BL_OnUninit(...args); else await this.__BL_OnUninit();
+                if (args) await this.__BL_OnUninit(...args); else await this.__BL_OnUninit();
             } catch (error) {
                 let a = error;
             }
-
         };
-        return new BL().init({ homey, modules, silent, waitTime, required });
+
+        let bl = new BL({ homey, modules, silent, waitTime, required });
+        await bl.init();
+        return bl;
+
+        //return new BL().init({ homey, modules, silent, waitTime, required });
     }
 
     async realtimeFunction(event) {
@@ -118,22 +162,51 @@ class BL {
         }
     }
 
-
-
-    /** @private */
-    async init({ homey, modules, silent, waitTime, required } = {}) {
+    constructor({ homey, modules, silent, waitTime, required } = {}) {        
         if (BL._current) return BL._current;
         BL._current = this;
         BL.homey = homey;
+        // _modules = modules;
+        // _silent = silent;
+        // _waitTime = waitTime;
+        // _required = required;
+        
 
         this.homey = homey;
         this.required = required === undefined ? (modules && modules.length) : required;
         this.silent = silent === undefined ? (!modules || !modules.length || !this.required) : silent;
         this.modules = modules;
         this.waitTime = waitTime;
-        //this.required = required;
+    }
+    async init() {
+        if (!this.api) {
+            try {
+                this.api = await this.getAppApi('net.i-dev.betterlogic', 'Better Logic Library', false);//true);
+            } catch (error) {
+                this.homey.error('BL.init', error);
+                return;
+            }
+        }
+        return await this._init();
+    }
 
-        this.defer = new Defer(15 * 60 * 1000, null, () => {
+
+    /** @private */
+    async _init() {
+        this.homey.log('BL._init', 'loading');
+        // if (BL._current) return BL._current;
+        // BL._current = this;
+        // BL.homey = homey;
+
+        // this.homey = homey;
+        // this.required = required === undefined ? (modules && modules.length) : required;
+        // this.silent = silent === undefined ? (!modules || !modules.length || !this.required) : silent;
+        // this.modules = modules;
+        // this.waitTime = waitTime;
+
+        
+
+        this.defer = new Defer(1 * 60 * 1000, null, () => {
             if (this.silent === false) {
                 this.homey.notifications.createNotification({ excerpt: `Warning: Better Logic Library could not be loaded and is required! Install the Better Logic Library App to continue to use this app (${this.homey.app.id}).` });
                 this.defer.reject(new Error('The Better Logic Library could not be loaded.'));
@@ -165,7 +238,13 @@ class BL {
                 return this.defer.promise;
             } else this.homey.settings.set('notification_bll_required', true);
         }
-        this.initBll().then(x => { this.defer.resolve(this); }).catch(x => { if (!this.required) this.defer.resolve(this); else this.defer.reject(this); });
+        this.initBll().then(x => { this.defer.resolve(this); }).catch(x => { 
+            if (this.silent === false) {
+                this.homey.notifications.createNotification({ excerpt: `Warning: Better Logic Library could not be loaded and is required! Install the Better Logic Library App to continue to use this app (${this.homey.app.id}).` });
+                this.defer.reject(new Error('The Better Logic Library could not be loaded.'));
+            } 
+            else if (!this.required) this.defer.resolve(this); else this.defer.reject(x); 
+        });
 
         return this.defer.promise;
 
@@ -175,7 +254,12 @@ class BL {
     async initBll({ version } = {}) {
         if (version && version === _version && process.env.DEBUG !== '1') return;
         let bblFile;
-        bblFile = await this.getLibrary('bll');
+        try {
+            bblFile = await this.getLibrary('bll');
+        } catch (error) {
+            throw new Error('The Better Logic Library app is not started.');
+            //throw error;
+        }
         let bll = this.requireFromString(bblFile.file, '');
         try {
             let old_bll = this.l;
@@ -190,7 +274,21 @@ class BL {
     /** @private */
     async getLibrary(libraryName) {
         let api = await this.getAppApi('net.i-dev.betterlogic', 'Better Logic Library');
-        return await api.get('/library/' + libraryName);
+        try {
+            let libPromise = api.get('/library/' + libraryName);
+            let defer = new Defer(5000, libPromise);
+            try {
+                let val = await defer.promise;
+                return val;
+            } catch (error) {
+                let v = await new Defer(5000, api.get('/library/' + libraryName)).promise;
+                return v;
+
+            }
+        } catch (error) {
+            console.log(error);
+            throw new Error(error);
+        }
     }
 
     /** @private */
@@ -231,17 +329,17 @@ class Defer {
         if (timeout) {
             this.timeout = BL.homey.setTimeout(function () {
                 if (!this.isDefered && this.promise) {
-
-                    if (this.promise.resolve) this.promise.resolve();
+                    this.reject();
+                    //if (this.promise.resolve) this.promise.resolve();
                     if (onTimeout) onTimeout();
                 }
             }.bind(this), timeout);
         }
         if (originalPromise && originalPromise.then) originalPromise.then((val1, val2, val3, val4) => this.resolve(val1, val2, val3, val4)).catch((val1, val2, val3, val4) => this.reject(val1, val2, val3, val4));
     }
-    then(fun) { this._promise.then(fun); }
-    catch(fun) { this._promise.catch(fun); }
-    finally(fun) { this._promise.finally(fun); }
+    then(fun) { this._promise.then(fun); return this; }
+    catch(fun) { this._promise.catch(fun); return this; }
+    finally(fun) { this._promise.finally(fun); return this; }
     resolve(val1, val2, val3, val4) { if (this.timeout) clearTimeout(this.timeout); this.isDefered = true; this._resolve(val1, val2, val3, val4); return this.promise; }
     reject(val1, val2, val3, val4) { if (this.timeout) clearTimeout(this.timeout); this.isDefered = true; this._reject(val1, val2, val3, val4); return this.promise; }
 }

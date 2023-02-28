@@ -8,6 +8,7 @@ let _isLoaded = false;
 var http = require('http');
 
 let _homey, _modules, _silent, _waitTime, _required;
+let ready, defer;
 
 class BL {
     /** @private @type {BL} */
@@ -32,15 +33,19 @@ class BL {
      * @memberof BL
      */
     static async decode(text, { locale, timeZone } = {}) {
-        if (!BL.l && BL && BL.Current && !BL.Current.silent) throw new Error('Better Logic Library is not loaded.');
-        if (!BL.l) return text;
-        //return await BL.l.decode(text, options);
+        // if (!BL.l && BL && BL.Current && !BL.Current.silent) throw new Error('Better Logic Library is not loaded.');
+        // if (!BL.l) return text;
+        let t = Date.now();
+        //BL.homey.log(0);
+        if(!await this.isInit()) return text;
+        //BL.homey.log(Date.now() - t);
+        
         return await BL.l.decode.apply(null, arguments);
     }
 
     static async getDownloadUrl({ base64, contentType, buffer, json, text } = {}) {
         if (!BL.l && BL && BL.Current && !BL.Current.silent) throw new Error('Better Logic Library is not loaded.');
-        if (!BL.l) return text;
+        if (!BL.l) return null;
         try {
             let api = await BL.Current.getAppApi('net.i-dev.betterlogic', 'Better Logic Library', true);
             //let link = await api.post('/getdownloadurl/', { base64, contentType }); base 64 is to big, send it separate.
@@ -91,6 +96,13 @@ class BL {
      * @static*/
     static get isLoaded() { return _isLoaded; }
 
+    static async isInit() {
+        await BL.Current.init();
+        if (!BL.l && BL && BL.Current && !BL.Current.silent) throw new Error('Better Logic Library is not loaded.');
+        if(!BL.l) return false;
+        return true;
+        //return true;
+    }
     /**
      * @description The lodash library
      * @static*/
@@ -143,7 +155,7 @@ class BL {
 
         let bl = new BL({ homey, modules, silent, waitTime, required });
         await bl.init();
-        return bl;
+        return bl.ready;
 
         //return new BL().init({ homey, modules, silent, waitTime, required });
     }
@@ -177,34 +189,57 @@ class BL {
         this.silent = silent === undefined ? (!modules || !modules.length || !this.required) : silent;
         this.modules = modules;
         this.waitTime = waitTime;
+
+        defer = new Defer();
+        ready = defer.promise;
     }
     async init() {
+        if(_isLoaded) return;
         if (!this.api) {
             try {
                 this.api = await this.getAppApi('net.i-dev.betterlogic', 'Better Logic Library', false);//true);
+                if (this.homey.app.id !== 'net.i-dev.betterlogic') this.api.on('realtime', this.realtimeFunction);
             } catch (error) {
                 this.homey.error('BL.init', error);
                 return;
             }
         }
-        return await this._init();
+        
+        _isLoaded = await this.api.getInstalled();
+        if (!_isLoaded) {
+            if (this.required) {
+                if (!await this.homey.settings.get('notification_bll_required')) {
+                    this.homey.notifications.createNotification({ excerpt: `Warning: The Better Logic Library App is required for this app (${this.homey.app.id}) (to support BLL Coding and reduce install size).\nPlease install the Better Logic Library App from the Athom Store.` });
+                    this.homey.settings.set('notification_bll_required', true);
+                }
+                return this.defer.promise;
+            }
+            if (!this.required) this.defer.resolve(this);
+            return;
+        } else this.homey.settings.set('notification_bll_required', true);
+
+        this.initBll().then(x => { defer.resolve(this); }).catch(x => { 
+            if (this.silent === false) {
+                this.homey.notifications.createNotification({ excerpt: `Warning: Better Logic Library could not be loaded and is required! Install the Better Logic Library App to continue to use this app (${this.homey.app.id}).` });
+                defer.reject(new Error('The Better Logic Library could not be loaded.'));
+            } 
+            else if (!this.required) defer.resolve(this); else defer.reject(x); 
+        });
+
+        // return await this._init();
     }
+    
+    /**
+     * @type {Promise<any>}
+     * @memberof BL
+     */
+    get ready() { return ready; }
 
 
     /** @private */
     async _init() {
         this.homey.log('BL._init', 'loading');
-        // if (BL._current) return BL._current;
-        // BL._current = this;
-        // BL.homey = homey;
 
-        // this.homey = homey;
-        // this.required = required === undefined ? (modules && modules.length) : required;
-        // this.silent = silent === undefined ? (!modules || !modules.length || !this.required) : silent;
-        // this.modules = modules;
-        // this.waitTime = waitTime;
-
-        
 
         this.defer = new Defer(1 * 60 * 1000, null, () => {
             if (this.silent === false) {
@@ -216,28 +251,28 @@ class BL {
             this.homey.notifications.createNotification({ excerpt: `This app (${this.homey.app.id}) now supports BLL coding within flowcards.\nInstall the Better Logic Library App from the Athom Store to use BLL coding.\nSee the BLL App Settings for more information.` });
             this.homey.settings.set('notification_bll_supported', true);
         }
-        if (!this.api) {
-            try {
-                this.api = await this.getAppApi('net.i-dev.betterlogic', 'Better Logic Library', true);
-            } catch (error) {
-                this.homey.error(error);
-            }
+        // if (!this.api) {
+        //     try {
+        //         this.api = await this.getAppApi('net.i-dev.betterlogic', 'Better Logic Library', true);
+        //     } catch (error) {
+        //         this.homey.error(error);
+        //     }
 
 
-            if (this.homey.app.id !== 'net.i-dev.betterlogic') this.api.on('realtime', this.realtimeFunction);
-            _isLoaded = await this.api.getInstalled();
-            if (!_isLoaded) {
-                if (this.required) {
-                    if (!await this.homey.settings.get('notification_bll_required')) {
-                        this.homey.notifications.createNotification({ excerpt: `Warning: The Better Logic Library App is required for this app (${this.homey.app.id}) (to support BLL Coding and reduce install size).\nPlease install the Better Logic Library App from the Athom Store.` });
-                        this.homey.settings.set('notification_bll_required', true);
-                    }
-                    return this.defer.promise;
-                }
-                if (!this.required) this.defer.resolve(this);
-                return this.defer.promise;
-            } else this.homey.settings.set('notification_bll_required', true);
-        }
+        //     if (this.homey.app.id !== 'net.i-dev.betterlogic') this.api.on('realtime', this.realtimeFunction);
+        //     _isLoaded = await this.api.getInstalled();
+        //     if (!_isLoaded) {
+        //         if (this.required) {
+        //             if (!await this.homey.settings.get('notification_bll_required')) {
+        //                 this.homey.notifications.createNotification({ excerpt: `Warning: The Better Logic Library App is required for this app (${this.homey.app.id}) (to support BLL Coding and reduce install size).\nPlease install the Better Logic Library App from the Athom Store.` });
+        //                 this.homey.settings.set('notification_bll_required', true);
+        //             }
+        //             return this.defer.promise;
+        //         }
+        //         if (!this.required) this.defer.resolve(this);
+        //         return this.defer.promise;
+        //     } else this.homey.settings.set('notification_bll_required', true);
+        // }
         this.initBll().then(x => { this.defer.resolve(this); }).catch(x => { 
             if (this.silent === false) {
                 this.homey.notifications.createNotification({ excerpt: `Warning: Better Logic Library could not be loaded and is required! Install the Better Logic Library App to continue to use this app (${this.homey.app.id}).` });

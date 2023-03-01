@@ -53,7 +53,7 @@ export class BL {
      * @param {*} [{ homey, modules, silent, waitTime, required }={}]
      * @return {*}
      */
-    static init({ homey, modules, silent, waitTime, required, onLoaded }?: any): any;
+    static init({ homey, modules, silent, waitTime, required }?: any): any;
     constructor({ homey, modules, silent, waitTime, required }?: {
         homey: any;
         modules: any;

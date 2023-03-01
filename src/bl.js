@@ -170,7 +170,8 @@ class BL {
     }
 
     async realtimeFunction(event) {
-        if (event === 'running') {
+        if ((BL.homey.app.id !== 'net.i-dev.betterlogic' && event === 'running') || ((event === 'running_2x' || event === 'running_3x') && !BL.Current.isReady)) {
+            //this.runningReceived = true;
             try {
                 BL.Current.init();
             } catch (error) {
@@ -203,10 +204,12 @@ class BL {
         this.silent = silent === undefined ? (!modules || !modules.length || !this.required) : silent;
         this.modules = modules;
         this.waitTime = waitTime;
+        this.isReady = false;
 
         defer = new Defer();
         ready = defer.promise;
         BL.ready = ready;
+        ready.then(()=>this.isReady = true);
     }
     async init() {
         if(initDefer) return await initDefer.promise;
@@ -223,7 +226,8 @@ class BL {
         if (!this.api) {
             try {                
                 this.api = await this.getAppApi('net.i-dev.betterlogic', 'Better Logic Library', true);//true);
-                if (this.homey.app.id !== 'net.i-dev.betterlogic') this.api.on('realtime', this.realtimeFunction);
+                //if (this.homey.app.id !== 'net.i-dev.betterlogic') 
+                    this.api.on('realtime', this.realtimeFunction);
             } catch (error) {
                 this.homey.error('BL.init', error);
                 //initDefer.reject();
@@ -250,7 +254,8 @@ class BL {
                 
             let bll = this.initBll();
             bll.then(x => { defer.resolve(this); }).catch(x => { 
-                defer.resolve(this);
+                //defer.resolve(this);
+                
                 // if (this.silent === false) {
                 //     this.homey.notifications.createNotification({ excerpt: `Warning: Better Logic Library could not be loaded and is required (for full functionality). Install the Better Logic Library App to continue to use this app (${this.homey.app.id}).` });
                 //     defer.reject(new Error('The Better Logic Library could not be loaded.'));

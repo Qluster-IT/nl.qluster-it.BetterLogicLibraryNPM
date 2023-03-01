@@ -69,6 +69,7 @@ export class BL {
     silent: any;
     modules: any;
     waitTime: any;
+    isReady: boolean;
     init(): Promise<any>;
     api: any;
     /**

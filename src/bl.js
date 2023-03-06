@@ -30,10 +30,7 @@ class BL {
     static async decode(text, { locale, timeZone } = {}) {
         // if (!BL.l && BL && BL.Current && !BL.Current.silent) throw new Error('Better Logic Library is not loaded.');
         // if (!BL.l) return text;
-        let t = Date.now();
-        //BL.homey.log(0);
-        if (!await this.isInit()) return text;
-        //BL.homey.log(Date.now() - t);
+        if (!this.Current.isReady) return text;
 
         return await BL.l.decode.apply(null, arguments);
     }
@@ -42,7 +39,7 @@ class BL {
      * NOT YET PUBLICLY IN USE!
      * @returns 
      */
-    static async getDownloadUrl({ base64, contentType, buffer, json, text } = {}) {
+    static async getDownloadUrl({ base64, contentType, buffer, json, text, filename } = {}) {
         if (!BL.l && BL && BL.Current && !BL.Current.silent) throw new Error('Better Logic Library is not loaded.');
         if (!BL.l) return null;
         return await BL.l.getDownloadUrl.apply(null, arguments);
@@ -82,12 +79,20 @@ class BL {
     static set datetime(val) { BL._datetime = val; }
 
     /**
-     * @description The DateTime library, used for converting date and times to strings formatted for the user.
+     * @description The Proto library.
      * @type {typeof import('../dist/proto')} @static*/
     static get proto() { if (BL._proto) return BL._proto; throw new Error('The Better Logic Library App is not running.'); }//BLL: Proto has not been loaded.'); }
 
     /** @private */
     static set proto(val) { BL._proto = val; }
+
+    /** 
+     * @description The JSON library, used for converting JSON files into Excel, Csv.
+     * @type {typeof import('../dist/json')} @static*/
+     static get json() { if (BL._json) return BL._json; throw new Error('The Better Logic Library App is not running.'); }//BLL: DateTime has not been loaded.'); }
+
+     /** @private */
+     static set json(val) { BL._json = val; }
 
 
 
@@ -154,10 +159,11 @@ class BL {
 
     static clearObj(obj) {
         for (const key in obj)
-            if (Object.hasOwnProperty.call(obj, key)){
+            if (Object.hasOwnProperty.call(obj, key)) {
                 try {
                     delete obj[key];
-                } catch (ex) { }}
+                } catch (ex) { }
+            }
     }
 
 
@@ -203,7 +209,7 @@ class BL {
         BL.ready = BL._ready;
         BL._ready.then(() => {
             this.isReady = true;
-            BL.clearObj(BL._ready);            
+            BL.clearObj(BL._ready);
         });
     }
     async init({ reload } = {}) {
@@ -273,7 +279,7 @@ class BL {
 
             return this;
         } catch (error) {
-            if(BL._initDefer) BL._initDefer.resolve(this);
+            if (BL._initDefer) BL._initDefer.resolve(this);
             BL._initDefer = null;
             return this;
         }
@@ -291,7 +297,7 @@ class BL {
         try {
             version = await this.api.getVersion();
         } catch (error) {
-            
+
         }
         BL.homey.log('initBll');
         if (version && version === BL._version && process.env.DEBUG !== '1') return this;
@@ -310,7 +316,7 @@ class BL {
             delete this.bllFile; //Remove the String for performance
             let old_bll = this.l;
             //if(old_bll) return this;
-            
+
             if (true || !old_bll) {
                 this._l = await new bll.BLL({ homey: this.homey, modules: this.modules, silent: this.silent });
                 BL._L = bll.BLL;
@@ -327,21 +333,31 @@ class BL {
 
     /** @private */
     async getLibrary(libraryName) {
+        let defer = new Defer();
+        defer.promise.then(() => { }).catch(() => { });
+        BL.homey.setTimeout(() => (!defer || defer.isDefered ? null : defer.reject('Timeout: 5000')) & (defer=null), 5000);
         try {
-            let api = await this.getAppApi('net.i-dev.betterlogic', 'Better Logic Library');
-            try {
-                return await api.get('/library/' + libraryName);
-            } catch (err) { // Try once more.
+            this.getAppApi('net.i-dev.betterlogic', 'Better Logic Library').then((api) => {
                 try {
-                    return await api.get('/library/' + libraryName);
-                } catch (error) {
-                    throw new Error(error);
+                    api.get('/library/' + libraryName).then((x) => defer.resolve(x) & (defer=null)).catch(err => defer.reject(err) & (defer=null));
+                } catch (err) { // Try once more.                                        
+                    defer.reject(new Error(err));
+                    // try {
+                    //     defer.resolve(api.get('/library/' + libraryName));
+                    // } catch (error) {
+                    //     defer.reject(new Error(error));
+                    //     //throw new Error(error);
+                    // }
                 }
-            }
+            }).catch(err => defer.reject(err) & (defer=null));
+
         } catch (err) {
             console.log(err);
-            throw new Error(err);
+            defer.reject(new Error(err));
+            defer=null;
+            //throw new Error(err);
         }
+        return defer.promise;
     }
 
     /** @private */
@@ -362,9 +378,9 @@ class BL {
         if (onlyApi === true) return this.api;
         if (!this.api) throw new Error(appname + ' is not installed.');
         else {
-            try {             
-                BL._isLoaded = await this.api.getInstalled();   
-            } catch (error) {  }
+            try {
+                BL._isLoaded = await this.api.getInstalled();
+            } catch (error) { }
             if (!BL._isLoaded) throw new Error(appname + ' is not installed.');
         }
         return this.api;

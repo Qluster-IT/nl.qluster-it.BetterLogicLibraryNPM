@@ -21,12 +21,13 @@ export class BL {
      * NOT YET PUBLICLY IN USE!
      * @returns
      */
-    static getDownloadUrl({ base64, contentType, buffer, json, text }?: {
+    static getDownloadUrl({ base64, contentType, buffer, json, text, filename }?: {
         base64: any;
         contentType: any;
         buffer: any;
         json: any;
         text: any;
+        filename: any;
     }, ...args: any[]): Promise<any>;
     /**
      * Indicates if the BLL has been loaded before     *
@@ -48,9 +49,15 @@ export class BL {
     /** @private */
     static set proto(arg: typeof import("../dist/proto"));
     /**
-     * @description The DateTime library, used for converting date and times to strings formatted for the user.
+     * @description The Proto library.
      * @type {typeof import('../dist/proto')} @static*/
     static get proto(): typeof import("../dist/proto");
+    /** @private */
+    static set json(arg: typeof import("../dist/json"));
+    /**
+     * @description The JSON library, used for converting JSON files into Excel, Csv.
+     * @type {typeof import('../dist/json')} @static*/
+    static get json(): typeof import("../dist/json");
     /**
      *     *
      * @static

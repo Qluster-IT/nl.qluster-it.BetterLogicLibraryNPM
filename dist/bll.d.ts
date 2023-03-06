@@ -5,6 +5,7 @@ export class BLL {
     static get math(): any;
     static get datetime(): any;
     static get proto(): any;
+    static get json(): any;
     /**@type {Object} */
     static get homey(): any;
     static clearObj(obj: any): void;
@@ -30,12 +31,13 @@ export class BLL {
         locale: any;
         timeZone: any;
     }): Promise<any>;
-    getDownloadUrl({ base64, contentType, buffer, json, text }?: {
+    getDownloadUrl({ base64, contentType, buffer, json, text, filename }?: {
         base64: any;
         contentType: any;
         buffer: any;
         json: any;
         text: any;
+        filename: any;
     }): Promise<any>;
 }
 //# sourceMappingURL=bll.d.ts.map

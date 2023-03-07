@@ -339,7 +339,7 @@ class BL {
         try {
             this.getAppApi('net.i-dev.betterlogic', 'Better Logic Library').then((api) => {
                 try {
-                    api.get('/library/' + libraryName).then((x) => defer.resolve(x) & (defer=null)).catch(err => defer.reject(err) & (defer=null));
+                    api.get('/library/' + libraryName).then((x) => !defer || defer.isDefered ? null : defer.resolve(x) & (defer=null)).catch(err => !defer || defer.isDefered ? null : defer.reject(err) & (defer=null));
                 } catch (err) { // Try once more.                                        
                     defer.reject(new Error(err));
                     // try {
@@ -349,11 +349,11 @@ class BL {
                     //     //throw new Error(error);
                     // }
                 }
-            }).catch(err => defer.reject(err) & (defer=null));
+            }).catch(err => !defer || defer.isDefered ? null : defer.reject(err) & (defer=null));
 
         } catch (err) {
             console.log(err);
-            defer.reject(new Error(err));
+            if(defer) defer.reject(new Error(err));
             defer=null;
             //throw new Error(err);
         }

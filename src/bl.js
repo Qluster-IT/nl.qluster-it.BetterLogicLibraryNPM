@@ -139,29 +139,33 @@ class BL {
         //return new BL().init({ homey, modules, silent, waitTime, required });
     }
 
-    async realtimeFunction(event) {
-        BL.homey.log('realtime', event);
+    async realtimeFunction(event, data) {
         let reload = false;
-        if ((reload = (BL.homey.app.id !== 'net.i-dev.betterlogic' && event === 'running')) || ((event === 'running_2x' || event === 'running_3x') && !BL.Current.isReady)) {
-            //this.runningReceived = true;
-            try {
-                //if(!BL.Current.isReady) {
-                BL.homey.log('BL.Current.init reload', reload);
-                BL.Current.init({ reload });
+        if(event==='variable_changed') {
+            BL.onVariableUpdate(data);
 
-                //}
-            } catch (error) {
+        } else if (event.startsWith('running')) {
+            if ((reload = (BL.homey.app.id !== 'net.i-dev.betterlogic' && event === 'running')) || ((event === 'running_2x' || event === 'running_3x') && !BL.Current.isReady)) {
+                //this.runningReceived = true;
+                try {
+                    //if(!BL.Current.isReady) {
+                    BL.homey.log('BL.Current.init reload', reload);
+                    BL.Current.init({ reload });
 
+                    //}
+                } catch (error) {
+
+                }
+                // let x = async () => {
+                //     await BL.Current.initBll({ version: await BL.Current.api.getVersion() });
+                //     if (BL.Current.defer && !BL.Current.defer.isDefered) BL.Current.defer.resolve(this);
+                // };
+                // if (BL.Current.api.getInstalled()) x();
+
+                // else {
+                //     BL.homey.setTimeout(x, 15000);
+                // }
             }
-            // let x = async () => {
-            //     await BL.Current.initBll({ version: await BL.Current.api.getVersion() });
-            //     if (BL.Current.defer && !BL.Current.defer.isDefered) BL.Current.defer.resolve(this);
-            // };
-            // if (BL.Current.api.getInstalled()) x();
-
-            // else {
-            //     BL.homey.setTimeout(x, 15000);
-            // }
         }
     }
 
@@ -320,7 +324,7 @@ class BL {
         }
         //this.bllFile = bllFile;
         try {
-            let bll = this.requireFromString(this.bllFile.file, 'bll');
+            const bll = this.requireFromString(this.bllFile.file, 'bll');
             delete this.bllFile; //Remove the String for performance
             let old_bll = this.l;
             //if(old_bll) return this;
@@ -392,6 +396,15 @@ class BL {
             if (!BL._isLoaded) throw new Error(appname + ' is not installed.');
         }
         return this.api;
+    }
+
+    /**
+     * @override Setable member, when set, will be activated on any variable update.
+     * @param {Object} param0.variable 
+     */
+    static async onVariableUpdate({variable, date}) {
+        //BL.homey.log('realtime variable update', variable);
+        
     }
 
 

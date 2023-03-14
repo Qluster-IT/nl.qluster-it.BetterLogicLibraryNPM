@@ -82,6 +82,11 @@ export class BL {
     static init({ homey, modules, silent, waitTime, required }?: any): any;
     static clearObj(obj: any): void;
     static detroy(): void;
+    /**
+     * @override Setable member, when set, will be activated on any variable update.
+     * @param {Object} param0.variable
+     */
+    static override onVariableUpdate({ variable, date }: any): Promise<void>;
     constructor({ homey, modules, silent, waitTime, required }?: {
         homey: any;
         modules: any;
@@ -91,7 +96,7 @@ export class BL {
     });
     /** @private @type {import("../dist/bll").BLL} */
     private get l();
-    realtimeFunction(event: any): Promise<void>;
+    realtimeFunction(event: any, data: any): Promise<void>;
     homey: any;
     required: any;
     silent: any;

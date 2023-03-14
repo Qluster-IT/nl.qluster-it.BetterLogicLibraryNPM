@@ -116,7 +116,7 @@ class BL {
         homey.app.onUninit = async function (args) {
 
             try {
-                if (BL.Current) await BL.Current.detroy();
+                if (BL) await BL.detroy();
             } catch (error) {
                 console.log(error);
             }

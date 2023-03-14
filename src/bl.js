@@ -108,7 +108,6 @@ class BL {
      *     *
      * @static
      * @param {*} [{ homey, modules, silent, waitTime, required }={}]
-     * @return {*} 
      */
     static async init({ homey, modules, silent, waitTime, required } = {}) {
         let bl = new BL({ homey, modules, silent, waitTime, required });
@@ -220,7 +219,7 @@ class BL {
         BL._ready = BL._defer.promise;
         BL.ready = BL._ready;
         BL._ready.then(() => {
-            this.isReady = true;
+            BL.isReady = this.isReady = true;
             BL.clearObj(BL._ready);
         });
     }
@@ -405,6 +404,16 @@ class BL {
     static async onVariableUpdate({variable, date}) {
         //BL.homey.log('realtime variable update', variable);
         
+    }
+
+
+    static async getVariables() {
+        return await BL.Current.getVariables();
+    }
+
+    async getVariables() {
+        const api = await this.getAppApi('net.i-dev.betterlogic', 'Better Logic Library');
+        return await api.get('/all');
     }
 
 

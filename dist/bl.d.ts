@@ -77,9 +77,8 @@ export class BL {
      *     *
      * @static
      * @param {*} [{ homey, modules, silent, waitTime, required }={}]
-     * @return {*}
      */
-    static init({ homey, modules, silent, waitTime, required }?: any): any;
+    static init({ homey, modules, silent, waitTime, required }?: any): Promise<any>;
     static clearObj(obj: any): void;
     static detroy(): void;
     /**
@@ -87,6 +86,7 @@ export class BL {
      * @param {Object} param0.variable
      */
     static override onVariableUpdate({ variable, date }: any): Promise<void>;
+    static getVariables(): Promise<any>;
     constructor({ homey, modules, silent, waitTime, required }?: {
         homey: any;
         modules: any;
@@ -122,6 +122,7 @@ export class BL {
     private requireFromString;
     /** @private */
     private getAppApi;
+    getVariables(): Promise<any>;
 }
 export class Defer {
     /**

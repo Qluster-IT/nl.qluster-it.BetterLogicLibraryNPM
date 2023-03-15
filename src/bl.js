@@ -159,6 +159,7 @@ class BL {
     async realtimeFunction(event, data) {
         let reload = false;
         if(event==='variable_changed') {
+            if(data && data.variable && data.variable.lastChanged) data.variable.lastChanged = new Date(data.variable.lastChanged);
             BL.onVariableUpdate(data);
 
         } else if (event.startsWith('running')) {
@@ -416,7 +417,7 @@ class BL {
     }
 
     /**
-     * @override Setable member, when set, will be activated on any variable update.
+     * @decription Setable member, when set, will be activated on any variable update.
      * @param {Object} param0.variable 
      */
     static async onVariableUpdate({variable, date}) {

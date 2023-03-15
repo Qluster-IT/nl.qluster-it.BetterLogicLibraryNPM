@@ -35,6 +35,24 @@ class BL {
         return await BL.l.decode.apply(BL.l, arguments);
     }
 
+    
+    /**
+     * @description Run the given expression {@link String}.
+     * @static
+     * @async
+     * @param {string} expression The expression to be executed.
+     * @param {object} contextProperties The properties to inject into the expression.
+     * @return {Promise<object>} A {@link Object} if BLL is running, otherwise it will throw an error.
+     * @memberof BL
+     * @throws An Error when BLL is not running
+     */
+    static async express(expression, contextProperties) {
+        if (!this.Current.isReady || !BL.l.express) throw new Error('Better Logic Library is not loaded.');//return undefined;
+
+        return await BL.l.express.apply(BL.l, arguments);
+    }
+
+
     /**
      * NOT YET PUBLICLY IN USE!
      * @returns 

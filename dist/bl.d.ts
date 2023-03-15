@@ -18,6 +18,17 @@ export class BL {
         timeZone: any;
     }, ...args: any[]): Promise<string>;
     /**
+     * @description Run the given expression {@link String}.
+     * @static
+     * @async
+     * @param {string} expression The expression to be executed.
+     * @param {object} contextProperties The properties to inject into the expression.
+     * @return {Promise<object>} A {@link Object} if BLL is running, otherwise it will throw an error.
+     * @memberof BL
+     * @throws An Error when BLL is not running
+     */
+    static express(expression: string, contextProperties: object, ...args: any[]): Promise<object>;
+    /**
      * NOT YET PUBLICLY IN USE!
      * @returns
      */

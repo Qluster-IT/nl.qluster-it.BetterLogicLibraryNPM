@@ -160,7 +160,7 @@ class BL {
         let reload = false;
         if(event==='variable_changed') {
             if(data && data.variable && data.variable.lastChanged) data.variable.lastChanged = new Date(data.variable.lastChanged);
-            BL.onVariableUpdate(data);
+            if(data) BL.onVariableUpdate({variable:data.variable, formattedDate:data.date});
 
         } else if (event.startsWith('running')) {
             if ((reload = (BL.homey.app.id !== 'net.i-dev.betterlogic' && event === 'running')) || ((event === 'running_2x' || event === 'running_3x') && !BL.Current.isReady)) {
@@ -420,7 +420,7 @@ class BL {
      * @decription Setable member, when set, will be activated on any variable update.
      * @param {Object} param0.variable 
      */
-    static async onVariableUpdate({variable, date}) {
+    static async onVariableUpdate({variable, formattedDate}) {
         //BL.homey.log('realtime variable update', variable);
         
     }

@@ -96,7 +96,7 @@ export class BL {
      * @decription Setable member, when set, will be activated on any variable update.
      * @param {Object} param0.variable
      */
-    static onVariableUpdate({ variable, date }: any): Promise<void>;
+    static onVariableUpdate({ variable, formattedDate }: any): Promise<void>;
     static getVariables(): Promise<any>;
     constructor({ homey, modules, silent, waitTime, required }?: {
         homey: any;

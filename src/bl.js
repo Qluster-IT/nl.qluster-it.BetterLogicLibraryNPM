@@ -35,24 +35,6 @@ class BL {
         return await BL.l.decode.apply(BL.l, arguments);
     }
 
-    
-    /**
-     * @description Run the given expression {@link String}.
-     * @static
-     * @async
-     * @param {string} expression The expression to be executed.
-     * @param {object} contextProperties The properties to inject into the expression.
-     * @return {Promise<object>} A {@link Object} if BLL is running, otherwise it will throw an error.
-     * @memberof BL
-     * @throws An Error when BLL is not running
-     */
-    static async express(expression, contextProperties) {
-        if (!this.Current.isReady || !BL.l.express) throw new Error('Better Logic Library is not loaded.');//return undefined;
-
-        return await BL.l.express.apply(BL.l, arguments);
-    }
-
-
     /**
      * NOT YET PUBLICLY IN USE!
      * @returns 
@@ -126,6 +108,7 @@ class BL {
      *     *
      * @static
      * @param {*} [{ homey, modules, silent, waitTime, required }={}]
+     * @return {*} 
      */
     static async init({ homey, modules, silent, waitTime, required } = {}) {
         let bl = new BL({ homey, modules, silent, waitTime, required });
@@ -134,7 +117,7 @@ class BL {
         homey.app.onUninit = async function (args) {
 
             try {
-                if (BL) await BL.detroy();
+                if (BL.Current) await BL.Current.detroy();
             } catch (error) {
                 console.log(error);
             }
@@ -159,15 +142,15 @@ class BL {
     async realtimeFunction(event, data) {
         let reload = false;
         if(event==='variable_changed') {
-            if(data && data.variable && data.variable.lastChanged) data.variable.lastChanged = new Date(data.variable.lastChanged);
-            if(data) BL.onVariableUpdate({variable:data.variable, formattedDate:data.date});
+            BL.onVariableUpdate(data);
 
         } else if (event.startsWith('running')) {
             if ((reload = (BL.homey.app.id !== 'net.i-dev.betterlogic' && event === 'running')) || ((event === 'running_2x' || event === 'running_3x') && !BL.Current.isReady)) {
                 //this.runningReceived = true;
                 try {
                     //if(!BL.Current.isReady) {
-                    BL.homey.log('BL.Current.init reload', reload);
+                    reload = !BL.Current.isReady;
+                    BL.homey.log('BL.Current.init reload', reload, 'event', event);
                     BL.Current.init({ reload });
 
                     //}
@@ -238,12 +221,12 @@ class BL {
         BL._ready = BL._defer.promise;
         BL.ready = BL._ready;
         BL._ready.then(() => {
-            BL.isReady = this.isReady = true;
+            this.isReady = true;
             BL.clearObj(BL._ready);
         });
     }
     async init({ reload } = {}) {
-        //BL.homey.log('BL.init');
+        BL.homey.log('bl.init', 'reload', reload);
         if (reload === true) {
             BL._isLoaded = false;
             if (BL._initDefer) BL._initDefer.resolve(this);
@@ -417,22 +400,12 @@ class BL {
     }
 
     /**
-     * @decription Setable member, when set, will be activated on any variable update.
+     * @describtion Setable member, when set, will be activated on any variable update.
      * @param {Object} param0.variable 
      */
-    static async onVariableUpdate({variable, formattedDate}) {
+    static async onVariableUpdate({variable, date}) {
         //BL.homey.log('realtime variable update', variable);
         
-    }
-
-
-    static async getVariables() {
-        return await BL.Current.getVariables();
-    }
-
-    async getVariables() {
-        const api = await this.getAppApi('net.i-dev.betterlogic', 'Better Logic Library');
-        return await api.get('/all');
     }
 
 

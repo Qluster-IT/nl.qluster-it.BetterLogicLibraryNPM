@@ -1,6 +1,6 @@
 {
   "name": "betterlogiclibrary",
-  "version": "0.9.11",
+  "version": "0.9.14",
   "description": "The Better Logic Library for Athom's Homey",
   "main": "src/bl.js",
   "types": "./dist/bl.d.ts",

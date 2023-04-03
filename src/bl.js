@@ -30,7 +30,7 @@ class BL {
     static async decode(text, { locale, timeZone } = {}) {
         // if (!BL.l && BL && BL.Current && !BL.Current.silent) throw new Error('Better Logic Library is not loaded.');
         // if (!BL.l) return text;
-        if (!this.Current.isReady) return text;
+        if (!BL.isReady) return text;
 
         return await BL.l.decode.apply(BL.l, arguments);
     }
@@ -47,7 +47,7 @@ class BL {
      * @throws An Error when BLL is not running
      */
     static async express(expression, contextProperties) {
-        if (!this.Current.isReady || !BL.l.express) throw new Error('Better Logic Library is not loaded.');//return undefined;
+        if (!BL.isReady || !BL.l.express) throw new Error('Better Logic Library is not loaded.');//return undefined;
 
         return await BL.l.express.apply(BL.l, arguments);
     }
@@ -163,7 +163,7 @@ class BL {
             if(data) BL.onVariableUpdate({variable:data.variable, formattedDate:data.date});
 
         } else if (event.startsWith('running')) {
-            if ((reload = (BL.homey.app.id !== 'net.i-dev.betterlogic' && event === 'running')) || ((event === 'running_2x' || event === 'running_3x') && !BL.Current.isReady)) {
+            if ((reload = (BL.homey.app.id !== 'net.i-dev.betterlogic' && event === 'running')) || ((event === 'running_2x' || event === 'running_3x') && !BL.isReady)) {
                 //this.runningReceived = true;
                 try {
                     //if(!BL.Current.isReady) {
@@ -232,7 +232,7 @@ class BL {
         this.silent = silent === undefined ? (!modules || !modules.length || !this.required) : silent;
         this.modules = modules;
         this.waitTime = waitTime;
-        this.isReady = false;
+        BL.isReady = this.isReady = false;
 
         BL._defer = new Defer();
         BL._ready = BL._defer.promise;

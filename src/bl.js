@@ -105,6 +105,16 @@ class BL {
     static set datetime(val) { BL._datetime = val; }
 
     /**
+     * @description The DateTime library, used for converting date and times to strings formatted for the user.
+     * @type {typeof import('../dist/number')} @static*/
+    static get number() { if (BL._number) return BL._number; throw new Error('The Better Logic Library App is not running.'); }//BLL: DateTime has not been loaded.'); }
+
+
+    /** @private */
+    static set number(val) { BL._number = val; }
+
+
+    /**
      * @description The Proto library.
      * @type {typeof import('../dist/proto')} @static*/
     static get proto() { if (BL._proto) return BL._proto; throw new Error('The Better Logic Library App is not running.'); }//BLL: Proto has not been loaded.'); }
@@ -255,11 +265,9 @@ class BL {
         }
         if (this.homey.app.id !== 'net.i-dev.betterlogic' && !await this.homey.settings.get('notification_bll_supported')) {
             try {
-                this.homey.notifications.createNotification({ excerpt: `This app (${this.homey.app.id}) now supports BLL coding within flowcards.\nInstall the Better Logic Library App from the Athom Store to use BLL coding.\nSee the BLL App Settings for more information.` });
-            } catch (error) {
-
-            }
-            this.homey.settings.set('notification_bll_supported', true);
+                this.homey.settings.set('notification_bll_supported', true);
+                await this.homey.notifications.createNotification({ excerpt: `This app (${this.homey.app.id}) now supports BLL coding within flowcards.\nInstall the Better Logic Library App from the Athom Store to use BLL coding.\nSee the BLL App Settings for more information.` });
+            } catch (error) { }
         }
         if (!this.api) {
             try {

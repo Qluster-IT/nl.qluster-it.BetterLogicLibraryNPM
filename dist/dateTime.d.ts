@@ -10,13 +10,17 @@ declare class DateTime {
     static destroy(): void;
     static toTimeString(format: any, timeMs: any, timeSec: any): any;
     /**
-     *
      * @param {String|String[]} format
-     * @param {String|String[]|Number|Number[]|Date|Date[]} date
      * @param {String} locale
      * @param {String} timeZone
      * @returns
-     */
+     */ /**
+    * @param {String|String[]} format
+    * @param {String|String[]|Number|Number[]|Date|Date[]} date
+    * @param {String} locale
+    * @param {String} timeZone
+    * @returns
+    */
     static toString(format: string | string[], date: string | string[] | number | number[] | Date | Date[], locale: string, timeZone: string): any;
     /**
      * This method will return a new Date with the GMT offset removed(minus).
@@ -57,6 +61,8 @@ declare class DateTime {
     private static dayCodes;
     /** @private */
     private static hourCodes;
+    /** @private */
+    private static hour24Codes;
     /** @private */
     private static hour12Codes;
     /** @private */
@@ -135,6 +141,10 @@ declare class DateTime {
      */
     getHourByFormat(format: "numeric" | "2-digit"): string;
     /**
+       * @param {"numeric"|"2-digit"} format * @returns {String}
+       */
+    getHour24ByFormat(format: "numeric" | "2-digit"): string;
+    /**
      * @param {"numeric"|"2-digit"} format * @returns {String}
      */
     getHour12ByFormat(format: "numeric" | "2-digit"): string;
@@ -194,6 +204,10 @@ declare class DateTime {
      * @param {"HH"|"H"} format * @returns {String}
      */
     getHour(code: any): string;
+    /**
+     * @param {"HH24"|"H24"} format * @returns {String}
+     */
+    getHour24(code: any): string;
     /**
      * @param {"hh"|"h"} format * @returns {String}
      */

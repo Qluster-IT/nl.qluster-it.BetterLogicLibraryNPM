@@ -8,20 +8,29 @@ declare class DateTime {
     /** @private */
     private static init;
     static destroy(): void;
-    static toTimeString(format: any, timeMs: any, timeSec: any): any;
     /**
+     *
+     * @param {String} format
+     * @param {Number|Number[]} timeMs
+     * @param {Number} timeSec
+     * @returns {String|String[]}
+     */
+    static toTimeString(format: string, timeMs: number | number[], timeSec: number): string | string[];
+    /**
+     * @overload
      * @param {String|String[]} format
      * @param {String} locale
      * @param {String} timeZone
-     * @returns
+     * @returns {String|String[]}
      */ /**
+    * @overload
     * @param {String|String[]} format
     * @param {String|String[]|Number|Number[]|Date|Date[]} date
     * @param {String} locale
     * @param {String} timeZone
-    * @returns
+    * @returns {String|String[]}
     */
-    static toString(format: string | string[], date: string | string[] | number | number[] | Date | Date[], locale: string, timeZone: string): any;
+    static toString(format: string | string[], date: string | string[] | number | number[] | Date | Date[], locale: string, timeZone: string): string | string[];
     /**
      * This method will return a new Date with the GMT offset removed(minus).
      * @description Use this when the Date(time) is to be understood as locale time (but is in fact UTC).

@@ -253,7 +253,7 @@ class BL {
         });
     }
     async init({ reload } = {}) {
-        //BL.homey.log('BL.init');
+        BL.homey.log('bl.init');
         if (reload === true) {
             BL._isLoaded = false;
             if (BL._initDefer) BL._initDefer.resolve(this);
@@ -262,7 +262,9 @@ class BL {
             if (BL._initDefer) return await BL._initDefer.promise;
             else BL._initDefer = new Defer();
             if (BL._isLoaded) return this;
-        }
+        }        
+        BL.homey.log('bl.init after initDefer');
+
         if (this.homey.app.id !== 'net.i-dev.betterlogic' && !await this.homey.settings.get('notification_bll_supported')) {
             try {
                 this.homey.settings.set('notification_bll_supported', true);
@@ -271,8 +273,10 @@ class BL {
         }
         if (!this.api) {
             try {
+                BL.homey.log('bl.init loading api');
                 this.api = await this.getAppApi('net.i-dev.betterlogic', 'Better Logic Library', true);//true);
-                //if (this.homey.app.id !== 'net.i-dev.betterlogic') 
+                BL.homey.log('bl.init loading api done');
+
                 this.api.on('realtime', this.realtimeFunction);
             } catch (error) {
                 this.homey.error('BL.init', error);
@@ -283,7 +287,9 @@ class BL {
             }
         }
         try {
+            BL.homey.log('bl.init api getInstalled');
             BL._isLoaded = await this.api.getInstalled();
+            BL.homey.log('bl.init api getInstalled done');
             if (!BL._isLoaded) {
                 if (this.required) {
                     if (!await this.homey.settings.get('notification_bll_required')) {
@@ -303,22 +309,36 @@ class BL {
         }
         try {
             //if(BL.Current.isReady) return this;
-            let bll = this.initBll().then(x => { BL._defer.resolve(this); }).catch(x => {
-                //defer.resolve(this);
+            BL.homey.log('bl.init loading initBLL');
 
-                // if (this.silent === false) {
-                //     this.homey.notifications.createNotification({ excerpt: `Warning: Better Logic Library could not be loaded and is required (for full functionality). Install the Better Logic Library App to continue to use this app (${this.homey.app.id}).` });
-                //     defer.reject(new Error('The Better Logic Library could not be loaded.'));
-                // } 
-                // else if (!this.required) defer.resolve(this); else defer.reject(x); 
-            });
+            let bll = this.initBll()
+            .then(x => {                 
+                BL.homey.log('bl.init loading initBLL then');
+                BL._defer.resolve(this);
+             });
+            //  .catch(x => {
+            //     BL.homey.log('bl.init loading initBLL catch');
+            //     //defer.resolve(this);
+
+            //     // if (this.silent === false) {
+            //     //     this.homey.notifications.createNotification({ excerpt: `Warning: Better Logic Library could not be loaded and is required (for full functionality). Install the Better Logic Library App to continue to use this app (${this.homey.app.id}).` });
+            //     //     defer.reject(new Error('The Better Logic Library could not be loaded.'));
+            //     // } 
+            //     // else if (!this.required) defer.resolve(this); else defer.reject(x); 
+            // });
+            
+            BL.homey.log('bl.init loading initBLL await');
             let result = await bll;
+            BL.homey.log('bl.init loading initBLL await done');
             BL._initDefer.resolve(this);
 
             return this;
-        } catch (error) {
+        } catch (error) {            
             if (BL._initDefer) BL._initDefer.resolve(this);
             BL._initDefer = null;
+            BL.homey.log('bl.init loading initBLL error');
+            BL.homey.error('bl.init loading initBLL error');
+            BL.homey.error(error);
             return this;
         }
     }
@@ -337,25 +357,30 @@ class BL {
         } catch (error) {
 
         }
-        BL.homey.log('initBll');
+        BL.homey.log('initBll loading');
         if (version && version === BL._version && process.env.DEBUG !== '1') return this;
-        BL.homey.log('initBll version change');
+        BL.homey.log('initBll loading version change');
         //let bllFile = this.bllFile;
         try {
             //if (!this.bllFile) 
+            BL.homey.log('initBll loading library');
             this.bllFile = await this.getLibrary('bll');
+            BL.homey.log('initBll loading library done');
         } catch (error) {
+            BL.homey.error(error);
             throw new Error('The Better Logic Library app is not started.');
             //throw error;
         }
         //this.bllFile = bllFile;
         try {
+            BL.homey.log('initBll loading requireFromString');
             const bll = this.requireFromString(this.bllFile.file, 'bll');
             delete this.bllFile; //Remove the String for performance
             let old_bll = this.l;
             //if(old_bll) return this;
 
             if (true || !old_bll) {
+                BL.homey.log('initBll loading new bll.BLL');
                 this._l = await new bll.BLL({ homey: this.homey, modules: this.modules, silent: this.silent });
                 BL._L = bll.BLL;
                 if (old_bll) old_bll.destroy();
@@ -366,11 +391,14 @@ class BL {
         } catch (error) {
             BL.homey.error('BL.initBll', error);
         }
+        BL.homey.log('initBll loading done');
         return this;
     }
 
     /** @private */
     async getLibrary(libraryName) {
+        if(BL.homey.app.id === 'net.i-dev.betterlogic') return BL.homey.app.getLibrary(libraryName);
+
         let defer = new Defer();
         defer.promise.then(() => { }).catch(() => { });
         BL.homey.setTimeout(() => (!defer || defer.isDefered ? null : defer.reject('Timeout: 5000')) & (defer = null), 5000);

@@ -1,6 +1,6 @@
 {
   "name": "betterlogiclibrary",
-  "version": "0.11.0",
+  "version": "0.11.1",
   "description": "The Better Logic Library for Athom's Homey",
   "main": "src/bl.js",
   "types": "./dist/bl.d.ts",
@@ -10,13 +10,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://QlusterIT@bitbucket.org/QlusterIT/nl.qluster-it.betterlogiclibrarynpm.git"
+    "url": "git+https://github.com/Qluster-IT/nl.qluster-it.BetterLogicLibraryNPM.git"
   },
   "keywords": [
     "BLL"
   ],
   "author": "Arie J. Godschalk",
   "license": "MIT",
-  "homepage": "https://bitbucket.org/QlusterIT/nl.qluster-it.betterlogiclibrarynpm#readme",
+  "homepage": "https://github.com/Qluster-IT/nl.qluster-it.BetterLogicLibraryNPM#readme",
   "devDependencies": {}
 }

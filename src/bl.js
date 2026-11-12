@@ -329,7 +329,23 @@ class BL {
         if (this.homey.app.id !== 'net.i-dev.betterlogic' && !await this.homey.settings.get('notification_bll_supported')) {
             try {
                 this.homey.settings.set('notification_bll_supported', true);
-                await this.homey.notifications.createNotification({ excerpt: `This app (${this.homey.__(this.homey.manifest.name)}) now supports BLL coding within flowcards.\nInstall the Better Logic Library App from the Athom Store to use BLL coding.\nSee the BLL App Settings for more information.` });
+                const appName = this.homey.__(this.homey.manifest.name);
+                const excerpt = this.homey.__({
+                    en: `This app (${appName}) now supports BLL coding within flowcards.\nInstall the Better Logic Library App from the Athom Store to use BLL coding.\nSee the BLL App Settings for more information.`,
+                    nl: `Deze app (${appName}) ondersteunt nu BLL-codering in flowkaarten.\nInstalleer de Better Logic Library-app vanuit de Athom Store om BLL-codering te gebruiken.\nBekijk de instellingen van de BLL-app voor meer informatie.`,
+                    de: `Diese App (${appName}) unterstützt jetzt BLL-Codierung in Flow-Karten.\nInstalliere die Better Logic Library-App aus dem Athom Store, um BLL-Codierung zu verwenden.\nWeitere Informationen findest du in den Einstellungen der BLL-App.`,
+                    fr: `Cette application (${appName}) prend désormais en charge le codage BLL dans les cartes Flow.\nInstallez l'application Better Logic Library depuis l'Athom Store pour utiliser le codage BLL.\nConsultez les paramètres de l'application BLL pour plus d'informations.`,
+                    it: `Questa app (${appName}) ora supporta la codifica BLL nelle schede Flow.\nInstalla l'app Better Logic Library dall'Athom Store per usare la codifica BLL.\nConsulta le impostazioni dell'app BLL per maggiori informazioni.`,
+                    sv: `Den här appen (${appName}) stöder nu BLL-kodning i Flow-kort.\nInstallera Better Logic Library-appen från Athom Store för att använda BLL-kodning.\nSe BLL-appens inställningar för mer information.`,
+                    no: `Denne appen (${appName}) støtter nå BLL-koding i Flow-kort.\nInstaller Better Logic Library-appen fra Athom Store for å bruke BLL-koding.\nSe innstillingene for BLL-appen for mer informasjon.`,
+                    es: `Esta aplicación (${appName}) ahora admite codificación BLL en tarjetas Flow.\nInstala la aplicación Better Logic Library desde Athom Store para usar la codificación BLL.\nConsulta los ajustes de la aplicación BLL para obtener más información.`,
+                    da: `Denne app (${appName}) understøtter nu BLL-kodning i Flow-kort.\nInstaller Better Logic Library-appen fra Athom Store for at bruge BLL-kodning.\nSe indstillingerne for BLL-appen for at få flere oplysninger.`,
+                    ru: `Это приложение (${appName}) теперь поддерживает кодирование BLL в карточках Flow.\nУстановите приложение Better Logic Library из Athom Store, чтобы использовать кодирование BLL.\nДополнительную информацию см. в настройках приложения BLL.`,
+                    pl: `Ta aplikacja (${appName}) obsługuje teraz kodowanie BLL w kartach Flow.\nZainstaluj aplikację Better Logic Library z Athom Store, aby korzystać z kodowania BLL.\nWięcej informacji znajdziesz w ustawieniach aplikacji BLL.`,
+                    ko: `이 앱(${appName})은 이제 Flow 카드에서 BLL 코딩을 지원합니다.\nBLL 코딩을 사용하려면 Athom Store에서 Better Logic Library 앱을 설치하세요.\n자세한 내용은 BLL 앱 설정을 참조하세요.`,
+                    ar: `يدعم هذا التطبيق (${appName}) الآن برمجة BLL في بطاقات Flow.\nثبّت تطبيق Better Logic Library من متجر Athom لاستخدام برمجة BLL.\nراجع إعدادات تطبيق BLL لمزيد من المعلومات.`,
+                });
+                await this.homey.notifications.createNotification({ excerpt });
             } catch (error) { }
         }
         if (!this.api) {

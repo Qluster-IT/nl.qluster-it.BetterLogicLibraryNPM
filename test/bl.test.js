@@ -54,10 +54,7 @@ test('support notification uses the localized app name and is sent only once', a
     const notifications = [];
     homey.app = { id: 'example.app' };
     homey.manifest = { name: { en: 'Example App', nl: 'Voorbeeld App' } };
-    homey.__ = (name) => {
-        assert.equal(name, homey.manifest.name);
-        return name.nl;
-    };
+    homey.__ = (translations) => translations.nl || translations.en;
     homey.settings = {
         get: (key) => settings.get(key),
         set: (key, value) => settings.set(key, value),
@@ -73,5 +70,40 @@ test('support notification uses the localized app name and is sent only once', a
     await BL.init({ homey });
 
     assert.equal(notifications.length, 1);
-    assert.equal(notifications[0].excerpt, 'This app (Voorbeeld App) now supports BLL coding within flowcards.\nInstall the Better Logic Library App from the Athom Store to use BLL coding.\nSee the BLL App Settings for more information.');
+    assert.equal(notifications[0].excerpt, 'Deze app (Voorbeeld App) ondersteunt nu BLL-codering in flowkaarten.\nInstalleer de Better Logic Library-app vanuit de Athom Store om BLL-codering te gebruiken.\nBekijk de instellingen van de BLL-app voor meer informatie.');
+});
+
+test('support notification is translated for all Homey languages with an English fallback', async (t) => {
+    const homey = new EventEmitter();
+    const api = new EventEmitter();
+    const settings = new Map();
+    const notifications = [];
+    let language;
+    homey.app = { id: 'example.app' };
+    homey.manifest = { name: { en: 'Example App' } };
+    homey.__ = (translations) => translations[language] || translations.en;
+    homey.settings = {
+        get: (key) => settings.get(key),
+        set: (key, value) => settings.set(key, value),
+    };
+    homey.notifications = { createNotification: async (notification) => notifications.push(notification) };
+    api.getInstalled = async () => false;
+    homey.api = { getApiApp: () => api };
+    homey.log = () => {};
+    homey.error = (message, error) => assert.fail(`${message}: ${error}`);
+    t.after(() => BL.detroy());
+
+    const excerpts = {};
+    for (language of ['en', 'nl', 'de', 'fr', 'it', 'sv', 'no', 'es', 'da', 'ru', 'pl', 'ko', 'ar', 'unknown']) {
+        settings.delete('notification_bll_supported');
+        await BL.init({ homey });
+        excerpts[language] = notifications.at(-1).excerpt;
+        assert.ok(excerpts[language].includes('Example App'), language);
+        assert.equal(excerpts[language].split('\n').length, 3, language);
+    }
+
+    for (const locale of ['nl', 'de', 'fr', 'it', 'sv', 'no', 'es', 'da', 'ru', 'pl', 'ko', 'ar']) {
+        assert.notEqual(excerpts[locale], excerpts.en, locale);
+    }
+    assert.equal(excerpts.unknown, excerpts.en);
 });

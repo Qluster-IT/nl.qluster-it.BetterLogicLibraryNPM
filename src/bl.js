@@ -5,11 +5,14 @@
 
 //let BL._ready, BL._defer, BL._initDefer;
 
+/**
+ * Loads and exposes the Better Logic Library for a Homey app.
+ */
 class BL {
     /** @private @type {BL} */
     static get Current() { return this._current; }
 
-    /** @private @type {import("../dist/bll").BLL */
+    /** @private @type {import("../dist/bll").BLL} */
     static get L() { return BL._L; }
 
     /** @private @type {import("../dist/bll").BLL} */
@@ -20,12 +23,13 @@ class BL {
 
 
     /**
-     * @description Decode the given {@link String} for any BLL codings and returns the decoded string.
-     * @static
-     * @async
-     * @param {string} text The text which could contain BLL coding and needs be be converted.
-     * @return {Promise<string>} A decoded {@link String} if BLL is running, otherwise it will return the original {@link String}.
-     * @memberof BL
+     * Decodes BLL expressions in text when the Better Logic Library is ready.
+     * If it is not ready, the input text is returned unchanged.
+     * @param {string} text Text that may contain BLL expressions.
+     * @param {Object} [options] Formatting options passed to the BLL decoder.
+     * @param {string} [options.locale] Locale to use when formatting values.
+     * @param {string} [options.timeZone] Time zone to use when formatting values.
+     * @returns {Promise<string>} Decoded text, or the original text if BLL is not ready.
      */
     static async decode(text, { locale, timeZone } = {}) {
         // if (!BL.l && BL && BL.Current && !BL.Current.silent) throw new Error('Better Logic Library is not loaded.');
@@ -37,14 +41,11 @@ class BL {
 
     
     /**
-     * @description Run the given expression {@link String}.
-     * @static
-     * @async
-     * @param {string} expression The expression to be executed.
-     * @param {object} contextProperties The properties to inject into the expression.
-     * @return {Promise<object>} A {@link Object} if BLL is running, otherwise it will throw an error.
-     * @memberof BL
-     * @throws An Error when BLL is not running
+     * Evaluates a BLL expression and supplies properties to its execution context.
+     * @param {string} expression Expression to evaluate.
+     * @param {Object} contextProperties Properties to add to the expression context.
+     * @returns {Promise<Object>} The expression result.
+     * @throws {Error} If BLL is not ready or expression evaluation is unavailable.
      */
     static async express(expression, contextProperties) {
         if (!BL.isReady || !BL.l.express) throw new Error('Better Logic Library is not loaded.');//return undefined;
@@ -54,8 +55,17 @@ class BL {
 
 
     /**
-     * NOT YET PUBLICLY IN USE!
-     * @returns 
+     * Requests a download URL from the loaded BLL instance.
+     * This method is not yet intended for public use.
+     * @param {Object} [options={}] Download content and metadata.
+     * @param {string} [options.base64] Base64-encoded content.
+     * @param {string} [options.contentType] Content MIME type.
+     * @param {*} [options.buffer] Content as a buffer.
+     * @param {Object} [options.json] Content as JSON.
+     * @param {string} [options.text] Content as text.
+     * @param {string} [options.filename] Suggested download filename.
+     * @param {Function} [options.callback] Callback used by the download implementation.
+     * @returns {Promise<*>} The URL returned by BLL, or `null` if BLL is unavailable.
      */
     static async getDownloadUrl({ base64, contentType, buffer, json, text, filename, callback } = {}) {
         if (!BL.l && BL && BL.Current && !BL.Current.silent) throw new Error('Better Logic Library is not loaded.');
@@ -63,19 +73,35 @@ class BL {
         return await BL.l.getDownloadUrl.apply(BL.l, arguments);
     }
     /**
-         * NOT YET PUBLICLY IN USE!
-         * @returns 
-         */
+     * Updates a download URL through the loaded BLL instance.
+     * This method is not yet intended for public use.
+     * @param {Object} [options={}] Link and content metadata.
+     * @param {string} [options.link] Existing link to update.
+     * @param {string} [options.base64] Base64-encoded content.
+     * @param {string} [options.contentType] Content MIME type.
+     * @param {*} [options.buffer] Content as a buffer.
+     * @param {Object} [options.json] Content as JSON.
+     * @param {string} [options.text] Content as text.
+     * @param {string} [options.filename] Suggested download filename.
+     * @param {Function} [options.callback] Callback used by the download implementation.
+     * @returns {Promise<*>} The result returned by BLL, or `null` if BLL is unavailable.
+     */
     static async setDownloadUrl({ link, base64, contentType, buffer, json, text, filename, callback } = {}) {
         if (!BL.l && BL && BL.Current && !BL.Current.silent) throw new Error('Better Logic Library is not loaded.');
         if (!BL.l) return null;
         return await BL.l.setDownloadUrl.apply(BL.l, arguments);
     }
     /**
-     * Indicates if the BLL has been loaded before     *
-     * @static*/
+     * Indicates whether the Better Logic Library app has been reported as installed.
+     * @returns {boolean} Whether the app was detected as installed by the latest initialization.
+     */
     static get isLoaded() { return BL._isLoaded; }
 
+    /**
+     * Checks whether a BLL instance is available.
+     * @returns {Promise<boolean>} `true` when BLL is available, otherwise `false`.
+     * @throws {Error} If the current app requires BLL but it is not running.
+     */
     static async isInit() {
         // try {            
         //     await BL.Current.init();
@@ -88,16 +114,20 @@ class BL {
         //return true;
     }
     /**
-     * @description The lodash library
-     * @static*/
+     * Gets the loaded Lodash library.
+     * @returns {*} The Lodash instance loaded by BLL.
+     * @throws {Error} If Lodash is unavailable.
+     */
     static get _() { if (BL.__) return BL.__; throw new Error('The Better Logic Library App is not running.'); }//BLL: Lodash has not been loaded.'); }
 
     /** @private */
     static set _(val) { BL.__ = val; }
 
     /**
-     * @description The DateTime library, used for converting date and times to strings formatted for the user.
-     * @type {typeof import('../dist/dateTime')} @static*/
+     * Gets the DateTime library used to format dates and times.
+     * @type {typeof import('../dist/dateTime')}
+     * @throws {Error} If the DateTime library is unavailable.
+     */
     static get datetime() { if (BL._datetime) return BL._datetime; throw new Error('The Better Logic Library App is not running.'); }//BLL: DateTime has not been loaded.'); }
 
 
@@ -105,8 +135,10 @@ class BL {
     static set datetime(val) { BL._datetime = val; }
 
     /**
-     * @description The DateTime library, used for converting date and times to strings formatted for the user.
-     * @type {typeof import('../dist/number')} @static*/
+     * Gets the number utility library.
+     * @type {typeof import('../dist/number')}
+     * @throws {Error} If the number library is unavailable.
+     */
     static get number() { if (BL._number) return BL._number; throw new Error('The Better Logic Library App is not running.'); }//BLL: DateTime has not been loaded.'); }
 
 
@@ -115,45 +147,42 @@ class BL {
 
 
     /**
-     * @description The Proto library.
-     * @type {typeof import('../dist/proto')} @static*/
+     * Gets the Proto utility library.
+     * @type {typeof import('../dist/proto')}
+     * @throws {Error} If the Proto library is unavailable.
+     */
     static get proto() { if (BL._proto) return BL._proto; throw new Error('The Better Logic Library App is not running.'); }//BLL: Proto has not been loaded.'); }
 
     /** @private */
     static set proto(val) { BL._proto = val; }
 
-    /** 
-     * @description The JSON library, used for converting JSON files into Excel, Csv.
-     * @type {typeof import('../dist/json')} @static*/
+    /**
+     * Gets the JSON utility library, including JSON conversion helpers.
+     * @type {typeof import('../dist/json')}
+     * @throws {Error} If the JSON library is unavailable.
+     */
     static get json() { if (BL._json) return BL._json; throw new Error('The Better Logic Library App is not running.'); }//BLL: DateTime has not been loaded.'); }
 
     /** @private */
     static set json(val) { BL._json = val; }
 
-
-
     /**
-     *     *
-     * @static
-     * @param {*} [{ homey, modules, silent, waitTime, required }={}]
+     * Initializes BLL for a Homey app.
+     * Any existing BLL instance is cleaned up first. Cleanup is also registered
+     * for the Homey's `unload` event; the app's `onUninit` method is left untouched.
+     * @param {Object} options Initialization options.
+     * @param {Object} options.homey Homey instance used by this app.
+     * @param {string[]} [options.modules] BLL modules to load.
+     * @param {boolean} [options.silent] Whether to initialize the loaded BLL silently.
+     * @param {number} [options.waitTime] Wait-time setting passed to the BLL wrapper.
+     * @param {boolean} [options.required] Whether the app requires BLL.
+     * @returns {Promise<BL>} The initialized BLL wrapper.
      */
     static async init({ homey, modules, silent, waitTime, required } = {}) {
+        if (BL.Current) BL.detroy();
         let bl = new BL({ homey, modules, silent, waitTime, required });
 
-        homey.app.__BL_OnUninit = homey.app.onUninit;
-        homey.app.onUninit = async function (args) {
-
-            try {
-                if (BL) await BL.detroy();
-            } catch (error) {
-                console.log(error);
-            }
-            try {
-                if (args) await this.__BL_OnUninit(...args); else await this.__BL_OnUninit();
-            } catch (error) {
-                let a = error;
-            }
-        };
+        homey.once('unload', BL.detroy);
 
         try {
             return await bl.init({ reload: true });
@@ -166,6 +195,12 @@ class BL {
         //return new BL().init({ homey, modules, silent, waitTime, required });
     }
 
+    /**
+     * Handles realtime events received from the Better Logic Library app.
+     * @param {string} event Realtime event name.
+     * @param {Object} data Event payload.
+     * @returns {Promise<void>}
+     */
     async realtimeFunction(event, data) {
         let reload = false;
         if(event==='variable_changed') {
@@ -197,6 +232,11 @@ class BL {
         }
     }
 
+    /**
+     * Deletes the own enumerable properties of an object.
+     * @param {Object} obj Object whose own properties should be cleared.
+     * @returns {void}
+     */
     static clearObj(obj) {
         for (const key in obj)
             if (Object.hasOwnProperty.call(obj, key)) {
@@ -206,12 +246,17 @@ class BL {
             }
     }
 
-
+    /**
+     * Cleans up the current BLL instance and its Homey/realtime listeners.
+     * The misspelling is retained for compatibility with existing callers.
+     * @returns {void}
+     */
     static detroy() {
         //BL.homey.settings.set('___TEST___', 'detroy');
         try {
             //BL.homey.settings.set('___TEST___', 'BL.Current' + !!(BL.Current));
             if (!BL.Current) return;
+            BL.Current.homey.removeListener('unload', BL.detroy);
             if (BL.Current.api) {
                 BL.Current.api.off('realtime', BL.Current.realtimeFunction);
                 //BL.Current.api.unregister();
@@ -224,9 +269,19 @@ class BL {
                 BL.clearObj(BL);
             }
         } catch (error) { console.log(error); }
+        BL._current = null;
         //throw new Error('DONE FINISHED');
     }
 
+    /**
+     * Creates a BLL wrapper. Prefer {@link BL.init} to initialize it.
+     * @param {Object} options Constructor options.
+     * @param {Object} options.homey Homey instance used by this app.
+     * @param {string[]} [options.modules] BLL modules to load.
+     * @param {boolean} [options.silent] Whether to initialize the loaded BLL silently.
+     * @param {number} [options.waitTime] Wait-time setting passed to the BLL wrapper.
+     * @param {boolean} [options.required] Whether the app requires BLL.
+     */
     constructor({ homey, modules, silent, waitTime, required } = {}) {
         if (BL._current) return BL._current;
         BL._current = this;
@@ -252,6 +307,12 @@ class BL {
             BL.clearObj(BL._ready);
         });
     }
+    /**
+     * Loads or refreshes the BLL API and, when available, the requested modules.
+     * @param {Object} [options={}] Initialization controls.
+     * @param {boolean} [options.reload=false] Forces a fresh initialization.
+     * @returns {Promise<BL>} This BLL wrapper after initialization completes.
+     */
     async init({ reload } = {}) {
         BL.homey.log('bl.init');
         if (reload === true) {
@@ -344,12 +405,16 @@ class BL {
     }
 
     /**
-     * @type {Promise<any>}
-     * @memberof BL
+     * Promise resolved when the BLL instance becomes ready.
+     * @type {Promise<BL>}
      */
     get ready() { return BL._ready; }
 
-    /** @private */
+    /**
+     * Loads the BLL bundle and initializes its exported library.
+     * @private
+     * @returns {Promise<BL>} This wrapper after the bundle initialization attempt.
+     */
     async initBll() {
         let version;
         try {
@@ -395,7 +460,12 @@ class BL {
         return this;
     }
 
-    /** @private */
+    /**
+     * Retrieves a library bundle from this app or from the Better Logic Library API.
+     * @private
+     * @param {string} libraryName Name of the library to retrieve.
+     * @returns {Promise<Object>} Library response containing the bundle file.
+     */
     async getLibrary(libraryName) {
         if(BL.homey.app.id === 'net.i-dev.betterlogic') return BL.homey.app.getLibrary(libraryName);
 
@@ -426,7 +496,13 @@ class BL {
         return defer.promise;
     }
 
-    /** @private */
+    /**
+     * Compiles JavaScript source text as a Node module and returns its exports.
+     * @private
+     * @param {string} src JavaScript source code.
+     * @param {string} [filename] Filename used for the compiled module.
+     * @returns {Object} The compiled module's exports.
+     */
     requireFromString(src, filename) {
         let m = new module.constructor();
         m.paths = module.paths;
@@ -434,7 +510,15 @@ class BL {
         return m.exports;
     }
 
-    /** @private */
+    /**
+     * Gets this app's API client for another Homey app.
+     * @private
+     * @param {string} appId Target app ID.
+     * @param {string} appname Human-readable target app name for errors.
+     * @param {boolean} [onlyApi=false] Returns the API client without checking installation.
+     * @returns {Promise<Object>} The target app's API client.
+     * @throws {Error} If the API client cannot be obtained or the target app is unavailable.
+     */
     async getAppApi(appId, appname, onlyApi) {
         try {
             if (!this.api) this.api = this.homey.api.getApiApp(appId);
@@ -453,19 +537,36 @@ class BL {
     }
 
     /**
-     * @decription Setable member, when set, will be activated on any variable update.
-     * @param {Object} param0.variable 
+     * Override hook invoked when a variable-change realtime event is received.
+     * The default implementation intentionally does nothing.
+     * @param {Object} options Variable update details.
+     * @param {Object} options.variable Updated variable, or the previous variable when removed.
+     * @param {string} options.variable.name Variable name.
+     * @param {*} options.variable.value Variable value.
+     * @param {string} options.variable.type Variable type, normally `string`, `number`, `boolean`, or `trigger`.
+     * @param {boolean} [options.variable.remove] Whether the variable was removed.
+     * @param {Date} [options.variable.lastChanged] Last change time, converted to a Date by the wrapper.
+     * @param {number} [options.variable.lastChangedTick] Last change time as milliseconds since the Unix epoch.
+     * @param {boolean} [options.variable.auto] Whether the variable was created automatically.
+     * @param {string} options.formattedDate Formatted last change time supplied by the BLL app.
+     * @returns {Promise<void>}
      */
     static async onVariableUpdate({variable, formattedDate}) {
         //BL.homey.log('realtime variable update', variable);
         
     }
-
-
+    /**
+     * Gets all Better Logic variables through the current BLL instance.
+     * @returns {Promise<*>} Variables returned by the Better Logic Library app.
+     */
     static async getVariables() {
         return await BL.Current.getVariables();
     }
 
+    /**
+     * Gets all Better Logic variables from the Better Logic Library app.
+     * @returns {Promise<*>} Variables returned by the Better Logic Library app.
+     */
     async getVariables() {
         const api = await this.getAppApi('net.i-dev.betterlogic', 'Better Logic Library');
         return await api.get('/all');
@@ -476,14 +577,27 @@ class BL {
 
 }
 
+/**
+ * Wraps a promise with explicit resolve/reject controls and optional forwarding.
+ */
 class Defer {
+    /** @returns {boolean} Whether this deferred promise has been resolved or rejected. */
     get isDefered() { return !!this._isDefered; }
+
+    /** @param {boolean} value Whether the deferred promise has settled. */
     set isDefered(v) { this._isDefered = v; }
 
+    /** @returns {Promise<*>} The wrapped promise. */
     get promise() { return this._promise; }
+
+    /** @param {Promise<*>} value Promise to wrap. */
     set promise(v) { this._promise = v; }
-    /** 
-     * @param {Number} timeout 
+
+    /**
+     * Creates a controllable promise.
+     * @param {number} [timeout] Timeout in milliseconds before rejecting.
+     * @param {Promise<*>} [originalPromise] Promise whose result should be forwarded.
+     * @param {Function} [onTimeout] Callback invoked after a timeout rejection.
      */
     constructor(timeout, originalPromise, onTimeout) {
         this._promise = new Promise((resolve, reject) => {
@@ -501,10 +615,39 @@ class Defer {
         }
         if (originalPromise && originalPromise.then) originalPromise.then((val1, val2, val3, val4) => this.resolve(val1, val2, val3, val4)).catch((val1, val2, val3, val4) => this.reject(val1, val2, val3, val4));
     }
+    /**
+     * Registers a fulfillment handler and returns this deferred wrapper.
+     * @param {Function} fun Fulfillment handler.
+     * @returns {Defer} This wrapper for chaining.
+     */
     then(fun) { this._promise.then(fun); return this; }
+
+    /**
+     * Registers a rejection handler and returns this deferred wrapper.
+     * @param {Function} fun Rejection handler.
+     * @returns {Defer} This wrapper for chaining.
+     */
     catch(fun) { this._promise.catch(fun); return this; }
+
+    /**
+     * Registers a handler to run after settlement and returns this wrapper.
+     * @param {Function} fun Settlement handler.
+     * @returns {Defer} This wrapper for chaining.
+     */
     finally(fun) { this._promise.finally(fun); return this; }
+
+    /**
+     * Resolves the wrapped promise and clears its timeout.
+     * @param {*} val1 Resolution value.
+     * @returns {Promise<*>} The wrapped promise.
+     */
     resolve(val1, val2, val3, val4) { if (this.timeout) clearTimeout(this.timeout); this.isDefered = true; this._resolve(val1, val2, val3, val4); return this.promise; }
+
+    /**
+     * Rejects the wrapped promise and clears its timeout.
+     * @param {*} val1 Rejection reason.
+     * @returns {Promise<*>} The wrapped promise.
+     */
     reject(val1, val2, val3, val4) { if (this.timeout) clearTimeout(this.timeout); this.isDefered = true; this._reject(val1, val2, val3, val4); return this.promise; }
 }
 

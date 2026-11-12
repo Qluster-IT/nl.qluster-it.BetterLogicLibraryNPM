@@ -46,3 +46,32 @@ test('unload and reinitialization clean up BLL without replacing app lifecycle m
     assert.equal(secondApi.listenerCount('realtime'), 0);
     assert.equal(BL.Current, null);
 });
+
+test('support notification uses the localized app name and is sent only once', async (t) => {
+    const homey = new EventEmitter();
+    const api = new EventEmitter();
+    const settings = new Map();
+    const notifications = [];
+    homey.app = { id: 'example.app' };
+    homey.manifest = { name: { en: 'Example App', nl: 'Voorbeeld App' } };
+    homey.__ = (name) => {
+        assert.equal(name, homey.manifest.name);
+        return name.nl;
+    };
+    homey.settings = {
+        get: (key) => settings.get(key),
+        set: (key, value) => settings.set(key, value),
+    };
+    homey.notifications = { createNotification: async (notification) => notifications.push(notification) };
+    api.getInstalled = async () => false;
+    homey.api = { getApiApp: () => api };
+    homey.log = () => {};
+    homey.error = (message, error) => assert.fail(`${message}: ${error}`);
+    t.after(() => BL.detroy());
+
+    await BL.init({ homey });
+    await BL.init({ homey });
+
+    assert.equal(notifications.length, 1);
+    assert.equal(notifications[0].excerpt, 'This app (Voorbeeld App) now supports BLL coding within flowcards.\nInstall the Better Logic Library App from the Athom Store to use BLL coding.\nSee the BLL App Settings for more information.');
+});

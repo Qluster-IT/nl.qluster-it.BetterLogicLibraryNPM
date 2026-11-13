@@ -83,6 +83,12 @@ All you need to do, is run the text you wish to decode through the decoder:
 
 
 ## Including modules
+`BL.isReady` becomes true only after the BLL bundle has loaded. Install/start events
+retry initialization; uninstall/stop events clear readiness and detach realtime
+updates. The `bl.ready` promise resolves on the first successful load and stays
+resolved after a later stop, so use `BL.isReady` to check current availability.
+Homey's `unload` event removes all listeners without replacing your app's `onUninit`.
+
 To include modules like lodash, follow these steps:
 * Include the module(s) in the BL initialization:
 ```

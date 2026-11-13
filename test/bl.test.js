@@ -3,33 +3,221 @@ const { EventEmitter } = require('node:events');
 const { test } = require('node:test');
 const { BL } = require('../src/bl');
 
-test('unload and reinitialization clean up BLL without replacing app lifecycle methods', async (t) => {
-    const firstHomey = new EventEmitter();
-    const firstApi = new EventEmitter();
-    const onUninit = () => {};
-    firstHomey.app = { onUninit };
-    firstHomey.api = firstApi;
-    const originalInit = BL.prototype.init;
-    BL.prototype.init = async function () {
-        this.api = this.homey.api;
-        this.api.on('realtime', this.realtimeFunction);
-        return this;
-    };
-    t.after(() => {
-        BL.prototype.init = originalInit;
-        BL.detroy();
+    function createLifecycleHomey() {
+        const homey = new EventEmitter();
+        const api = new EventEmitter();
+        const errors = [];
+        homey.app = { id: 'example.app', onUninit() {} };
+        homey.settings = { get: () => true, set() {} };
+        homey.api = { getApiApp: () => api };
+        homey.log = () => {};
+        homey.error = (...args) => errors.push(args);
+        homey.setTimeout = setTimeout;
+        api.getInstalled = async () => true;
+        api.getVersion = async () => '1';
+        api.get = async () => ({
+            file: `class BLL {
+                static get Current() { return this.current; }
+                constructor() { BLL.current = this; }
+                destroy() { BLL.current = null; }
+            }
+            module.exports = { BLL };`,
+        });
+        return { homey, api, errors };
+    }
+
+    test('BLL retries on install, clears readiness on uninstall and removes lifecycle listeners', async (t) => {
+        const { homey, api } = createLifecycleHomey();
+        let installed = false;
+        api.getInstalled = async () => installed;
+        t.after(() => BL.detroy());
+        const bl = await BL.init({ homey });
+        const ready = bl.ready;
+        assert.equal(BL.isReady, false);
+        assert.equal(api.listenerCount('realtime'), 0);
+
+        installed = true;
+        api.emit('install');
+        api.emit('install');
+        await ready;
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(bl.isReady, true);
+        assert.equal(api.listenerCount('realtime'), 1);
+
+        api.emit('uninstall');
+        assert.equal(BL.isReady, false);
+        assert.equal(bl.isReady, false);
+        assert.equal(api.listenerCount('realtime'), 0);
+        assert.equal(bl.ready, ready);
+        api.emit('install');
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(BL.isReady, true);
+        assert.equal(api.listenerCount('realtime'), 1);
+        homey.emit('unload');
+        for (const event of ['install', 'uninstall', 'realtime']) assert.equal(api.listenerCount(event), 0);
+        assert.equal(BL.isReady, false);
+        await bl.init();
+        assert.equal(api.listenerCount('install'), 0);
     });
 
+    test('install during a failed installation check retries after that check', async (t) => {
+        const { homey, api } = createLifecycleHomey();
+        let finish;
+        let started;
+        const checking = new Promise(resolve => { started = resolve; });
+        let checks = 0;
+        api.getInstalled = () => {
+            if (++checks > 1) return Promise.resolve(true);
+            started();
+            return new Promise(resolve => { finish = resolve; });
+        };
+        t.after(() => BL.detroy());
+        const initializing = BL.init({ homey });
+        await checking;
+        api.emit('install');
+        finish(false);
+        const bl = await initializing;
+        await bl.ready;
+        assert.equal(bl.isReady, true);
+        assert.equal(api.listenerCount('realtime'), 1);
+    });
+
+    test('uninstall and replacement invalidate pending installation checks', async (t) => {
+        t.after(() => BL.detroy());
+        for (const action of ['uninstall', 'replace']) {
+            const { homey, api } = createLifecycleHomey();
+            let finish;
+            let started;
+            const checking = new Promise(resolve => { started = resolve; });
+            api.getInstalled = () => {
+                started();
+                return new Promise(resolve => { finish = resolve; });
+            };
+            const initializing = BL.init({ homey });
+            await checking;
+            if (action === 'uninstall') api.emit('uninstall');
+            else {
+                const next = createLifecycleHomey();
+                next.api.getInstalled = async () => false;
+                await BL.init({ homey: next.homey });
+            }
+            finish(true);
+            const bl = await initializing;
+            assert.equal(bl.isReady, false);
+            assert.equal(BL.isReady, false);
+            assert.equal(api.listenerCount('realtime'), 0);
+        }
+    });
+
+    test('BLL bundle failure does not resolve readiness and can be retried', async (t) => {
+        const { homey, api, errors } = createLifecycleHomey();
+        const get = api.get;
+        api.get = async () => { throw new Error('App Not Ready'); };
+        t.after(() => BL.detroy());
+        const bl = await BL.init({ homey });
+        let ready = false;
+        bl.ready.then(() => { ready = true; });
+        assert.equal(bl.isReady, false);
+        assert.equal(ready, false);
+        assert.ok(errors.length > 0);
+        api.get = get;
+        await bl.init();
+        await bl.ready;
+        assert.equal(BL.isReady, true);
+        assert.equal(api.listenerCount('realtime'), 1);
+    });
+
+test('installation check errors leave BLL unready and allow a later retry', async (t) => {
+    const { homey, api, errors } = createLifecycleHomey();
+    const failure = new Error('installation check failed');
+    api.getInstalled = async () => { throw failure; };
+    t.after(() => BL.detroy());
+    const bl = await BL.init({ homey });
+    assert.equal(bl.isReady, false);
+    assert.equal(BL.isReady, false);
+    assert.equal(api.listenerCount('realtime'), 0);
+    assert.equal(errors[0][1], failure);
+    api.getInstalled = async () => true;
+    await bl.init();
+    assert.equal(bl.isReady, true);
+});
+
+test('replacement waits for an in-progress module constructor and rejects its stale exports', async (t) => {
+    const first = createLifecycleHomey();
+    const second = createLifecycleHomey();
+    let finish;
+    let started;
+    const constructing = new Promise(resolve => { started = resolve; });
+    const gate = new Promise(resolve => { finish = resolve; });
+    t.after(() => BL.detroy());
+    const firstInit = BL.init({ homey: first.homey });
+    const firstBl = BL.Current;
+    firstBl.requireFromString = () => ({
+        BLL: class {
+            constructor() {
+                started();
+                return gate.then(() => {
+                    BL.__ = 'stale lodash';
+                    return this;
+                });
+            }
+            destroy() {}
+        },
+    });
+    await constructing;
+    const secondInit = BL.init({ homey: second.homey });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(BL.isReady, false);
+    finish();
+    await firstInit;
+    const secondBl = await secondInit;
+    assert.equal(firstBl.isReady, false);
+    assert.equal(secondBl.isReady, true);
+    assert.equal(BL.__, undefined);
+    assert.equal(first.api.listenerCount('realtime'), 0);
+});
+
+test('late bundle responses cannot overwrite the replacement library', async (t) => {
+    const first = createLifecycleHomey();
+    const second = createLifecycleHomey();
+    const get = first.api.get;
+    let finish;
+    let started;
+    const downloading = new Promise(resolve => { started = resolve; });
+    first.api.get = () => {
+        started();
+        return new Promise(resolve => { finish = resolve; });
+    };
+    t.after(() => BL.detroy());
+    const firstInit = BL.init({ homey: first.homey });
+    await downloading;
+    const secondBl = await BL.init({ homey: second.homey });
+    const library = secondBl.l;
+    finish(await get());
+    const firstBl = await firstInit;
+    assert.equal(firstBl.isReady, false);
+    assert.equal(secondBl.isReady, true);
+    assert.equal(secondBl.l, library);
+    assert.equal(BL.isReady, true);
+});
+
+test('unload and reinitialization clean up BLL without replacing app lifecycle methods', async (t) => {
+    const first = createLifecycleHomey();
+    const second = createLifecycleHomey();
+    const firstHomey = first.homey;
+    const firstApi = first.api;
+    const onUninit = firstHomey.app.onUninit;
+    t.after(() => BL.detroy());
     await BL.init({ homey: firstHomey });
 
     assert.equal(firstHomey.app.onUninit, onUninit);
     assert.equal(firstHomey.listenerCount('unload'), 1);
     assert.equal(firstApi.listenerCount('realtime'), 1);
 
-    const secondHomey = new EventEmitter();
-    const secondApi = new EventEmitter();
+    const secondHomey = second.homey;
+    const secondApi = second.api;
     secondHomey.app = { onUninit };
-    secondHomey.api = secondApi;
+    secondHomey.app.id = 'example.app';
     await BL.init({ homey: secondHomey });
 
     assert.equal(firstHomey.listenerCount('unload'), 0);

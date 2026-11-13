@@ -5,6 +5,8 @@
 
 //let BL._ready, BL._defer, BL._initDefer;
 
+const BLL_EXPORT_KEYS = ['_L', '_version', '__', '_math', 'math', '_datetime', '_number', '_proto', '_json', 'submodules'];
+
 /**
  * Loads and exposes the Better Logic Library for a Homey app.
  */
@@ -184,15 +186,7 @@ class BL {
 
         homey.once('unload', BL.detroy);
 
-        try {
-            return await bl.init({ reload: true });
-        } catch (error) {
-
-        }
-        return bl;
-        //return bl.ready;
-
-        //return new BL().init({ homey, modules, silent, waitTime, required });
+        return await bl.init({ reload: true });
     }
 
     /**
@@ -213,11 +207,11 @@ class BL {
                 try {
                     //if(!BL.Current.isReady) {
                     BL.homey.log('BL.Current.init reload', reload);
-                    BL.Current.init({ reload });
+                    await BL.Current.init({ reload });
 
                     //}
                 } catch (error) {
-
+                    BL.homey.error('BL.init', error);
                 }
                 // let x = async () => {
                 //     await BL.Current.initBll({ version: await BL.Current.api.getVersion() });
@@ -247,30 +241,27 @@ class BL {
     }
 
     /**
-     * Cleans up the current BLL instance and its Homey/realtime listeners.
+     * Cleans up the current BLL instance and its install, uninstall, unload and realtime listeners.
      * The misspelling is retained for compatibility with existing callers.
      * @returns {void}
      */
     static detroy() {
-        //BL.homey.settings.set('___TEST___', 'detroy');
+        const current = BL.Current;
+        if (!current) return;
+        current._destroyed = true;
+        current.isReady = BL.isReady = false;
         try {
-            //BL.homey.settings.set('___TEST___', 'BL.Current' + !!(BL.Current));
-            if (!BL.Current) return;
-            BL.Current.homey.removeListener('unload', BL.detroy);
-            if (BL.Current.api) {
-                BL.Current.api.off('realtime', BL.Current.realtimeFunction);
-                //BL.Current.api.unregister();
+            current.homey.removeListener('unload', BL.detroy);
+            if (current._appApi) {
+                current._appApi.off('install', current._installListener);
+                current._appApi.off('uninstall', current._uninstallListener);
             }
-            if (BL.Current.l) {
-                //BL.homey.settings.set('___TEST___', 'CLEANING');
-                //let clearObj = BL.Current.L.clearObj;
-                BL.Current.l.detroy();
-                BL.clearObj(BL.Current);
-                BL.clearObj(BL);
-            }
-        } catch (error) { console.log(error); }
-        BL._current = null;
-        //throw new Error('DONE FINISHED');
+            current._uninstallListener();
+        } catch (error) {
+            current.homey.error('BL.detroy', error);
+        } finally {
+            BL._current = null;
+        }
     }
 
     /**
@@ -298,14 +289,39 @@ class BL {
         this.modules = modules;
         this.waitTime = waitTime;
         BL.isReady = this.isReady = false;
+        BL._isLoaded = false;
+        this._destroyed = false;
+        this._uninstallGeneration = 0;
+        this._previousLibraryInitialization = BL._libraryInitializing;
+        this._installListener = () => {
+            const pending = this._initializing || Promise.resolve();
+            pending.then(() => this.init({ reload: true })).catch(error => this.homey.error('BL.init', error));
+        };
+        this._uninstallListener = () => {
+            this._uninstallGeneration++;
+            this.isReady = false;
+            if (this.api) {
+                this.api.off('realtime', this.realtimeFunction);
+                this.api = null;
+            }
+            if (BL.Current === this) {
+                BL.isReady = BL._isLoaded = false;
+                try {
+                    if (this.l) this.l.destroy();
+                } catch (error) {
+                    this.homey.error('BL.destroyLibrary', error);
+                } finally {
+                    this._l = null;
+                    for (const key of BLL_EXPORT_KEYS) {
+                        delete BL[key];
+                    }
+                }
+            }
+        };
 
-        BL._defer = new Defer();
+        BL._defer = this._defer = new Defer();
         BL._ready = BL._defer.promise;
         BL.ready = BL._ready;
-        BL._ready.then(() => {
-            BL.isReady = this.isReady = true;
-            BL.clearObj(BL._ready);
-        });
     }
     /**
      * Loads or refreshes the BLL API and, when available, the requested modules.
@@ -314,18 +330,26 @@ class BL {
      * @returns {Promise<BL>} This BLL wrapper after initialization completes.
      */
     async init({ reload } = {}) {
-        BL.homey.log('bl.init');
-        if (reload === true) {
-            BL._isLoaded = false;
-            if (BL._initDefer) BL._initDefer.resolve(this);
-            BL._initDefer = new Defer();
-        } else {
-            if (BL._initDefer) return await BL._initDefer.promise;
-            else BL._initDefer = new Defer();
-            if (BL._isLoaded) return this;
-        }        
-        BL.homey.log('bl.init after initDefer');
+        if (this._destroyed) return this;
+        if (this._initializing) return this._initializing;
+        if (this.isReady && !reload) return this;
+        this._initializing = Promise.resolve().then(() => this.initialize()).catch(error => {
+            this.homey.error('BL.init', error);
+            return this;
+        }).finally(() => { this._initializing = null; });
+        return this._initializing;
+    }
 
+    /** @private @returns {Promise<BL>} */
+    async initialize() {
+        if (this._destroyed) return this;
+        const generation = this._uninstallGeneration;
+        // Downloaded BLL modules write to BL's shared exports while initializing.
+        if (this._previousLibraryInitialization) {
+            await this._previousLibraryInitialization;
+            this._previousLibraryInitialization = null;
+            if (this._destroyed || generation !== this._uninstallGeneration) return this;
+        }
         if (this.homey.app.id !== 'net.i-dev.betterlogic' && !await this.homey.settings.get('notification_bll_supported')) {
             try {
                 this.homey.settings.set('notification_bll_supported', true);
@@ -348,83 +372,38 @@ class BL {
                 await this.homey.notifications.createNotification({ excerpt });
             } catch (error) { }
         }
-        if (!this.api) {
-            try {
-                BL.homey.log('bl.init loading api');
-                this.api = await this.getAppApi('net.i-dev.betterlogic', 'Better Logic Library', true);//true);
-                BL.homey.log('bl.init loading api done');
-
-                this.api.on('realtime', this.realtimeFunction);
-            } catch (error) {
-                this.homey.error('BL.init', error);
-                //initDefer.reject();
-                BL._initDefer.resolve(this);
-                BL._initDefer = null;
-                return this;
-            }
-        }
-        try {
-            BL.homey.log('bl.init api getInstalled');
-            BL._isLoaded = await this.api.getInstalled();
-            BL.homey.log('bl.init api getInstalled done');
-            if (!BL._isLoaded) {
-                if (this.required) {
-                    if (!await this.homey.settings.get('notification_bll_required')) {
-                        this.homey.notifications.createNotification({ excerpt: `Warning: The Better Logic Library App is required for this app (${this.homey.app.id}) (to support BLL Coding and reduce install size).\nPlease install the Better Logic Library App from the Athom Store.` });
-                        this.homey.settings.set('notification_bll_required', true);
-                    }
+        if (this._destroyed || generation !== this._uninstallGeneration) return this;
+        const api = await this.getAppApi('net.i-dev.betterlogic', 'Better Logic Library', true);
+        const installed = await api.getInstalled();
+        if (this._destroyed || generation !== this._uninstallGeneration) return this;
+        BL._isLoaded = installed;
+        if (!installed) {
+            if (this.required) {
+                if (!await this.homey.settings.get('notification_bll_required')) {
+                    await this.homey.notifications.createNotification({ excerpt: `Warning: The Better Logic Library App is required for this app (${this.homey.app.id}) (to support BLL Coding and reduce install size).\nPlease install the Better Logic Library App from the Athom Store.` });
+                    this.homey.settings.set('notification_bll_required', true);
                 }
-                BL._initDefer.resolve(this);
-                BL._initDefer = null;
-                return this;
-            } else this.homey.settings.set('notification_bll_required', true);
-
-        } catch (error) {
-            BL._initDefer.resolve(this);
-            BL._initDefer = null;
+            }
             return this;
         }
-        try {
-            //if(BL.Current.isReady) return this;
-            BL.homey.log('bl.init loading initBLL');
-
-            let bll = this.initBll()
-            .then(x => {                 
-                BL.homey.log('bl.init loading initBLL then');
-                BL._defer.resolve(this);
-             });
-            //  .catch(x => {
-            //     BL.homey.log('bl.init loading initBLL catch');
-            //     //defer.resolve(this);
-
-            //     // if (this.silent === false) {
-            //     //     this.homey.notifications.createNotification({ excerpt: `Warning: Better Logic Library could not be loaded and is required (for full functionality). Install the Better Logic Library App to continue to use this app (${this.homey.app.id}).` });
-            //     //     defer.reject(new Error('The Better Logic Library could not be loaded.'));
-            //     // } 
-            //     // else if (!this.required) defer.resolve(this); else defer.reject(x); 
-            // });
-            
-            BL.homey.log('bl.init loading initBLL await');
-            let result = await bll;
-            BL.homey.log('bl.init loading initBLL await done');
-            BL._initDefer.resolve(this);
-
-            return this;
-        } catch (error) {            
-            if (BL._initDefer) BL._initDefer.resolve(this);
-            BL._initDefer = null;
-            BL.homey.log('bl.init loading initBLL error');
-            BL.homey.error('bl.init loading initBLL error');
-            BL.homey.error(error);
-            return this;
+        this.homey.settings.set('notification_bll_required', true);
+        if (!this.api) {
+            api.on('realtime', this.realtimeFunction);
+            this.api = api;
         }
+        await this.initBll();
+        if (this._destroyed || generation !== this._uninstallGeneration) return this;
+        this.isReady = BL.isReady = true;
+        this._defer.resolve(this);
+        return this;
     }
 
     /**
      * Promise resolved when the BLL instance becomes ready.
+     * Resolves only once; use `BL.isReady` to check availability after a stop.
      * @type {Promise<BL>}
      */
-    get ready() { return BL._ready; }
+    get ready() { return this._defer.promise; }
 
     /**
      * Loads the BLL bundle and initializes its exported library.
@@ -432,46 +411,53 @@ class BL {
      * @returns {Promise<BL>} This wrapper after the bundle initialization attempt.
      */
     async initBll() {
+        const generation = this._uninstallGeneration;
         let version;
         try {
             version = await this.api.getVersion();
         } catch (error) {
-
+            this.homey.error('BL.getVersion', error);
         }
         BL.homey.log('initBll loading');
-        if (version && version === BL._version && process.env.DEBUG !== '1') return this;
+        if (this._destroyed || generation !== this._uninstallGeneration) return this;
+        if (this.l && version && version === BL._version && process.env.DEBUG !== '1') return this;
         BL.homey.log('initBll loading version change');
         //let bllFile = this.bllFile;
         try {
             //if (!this.bllFile) 
             BL.homey.log('initBll loading library');
             this.bllFile = await this.getLibrary('bll');
+            if (this._destroyed || generation !== this._uninstallGeneration) return this;
             BL.homey.log('initBll loading library done');
         } catch (error) {
-            BL.homey.error(error);
+            this.homey.error(error);
             throw new Error('The Better Logic Library app is not started.');
             //throw error;
         }
         //this.bllFile = bllFile;
-        try {
-            BL.homey.log('initBll loading requireFromString');
-            const bll = this.requireFromString(this.bllFile.file, 'bll');
-            delete this.bllFile; //Remove the String for performance
-            let old_bll = this.l;
-            //if(old_bll) return this;
-
-            if (true || !old_bll) {
-                BL.homey.log('initBll loading new bll.BLL');
-                this._l = await new bll.BLL({ homey: this.homey, modules: this.modules, silent: this.silent });
+        const bll = this.requireFromString(this.bllFile.file, 'bll');
+        delete this.bllFile;
+        const old_bll = this.l;
+        const initializing = Promise.resolve().then(async () => {
+            if (this._destroyed || generation !== this._uninstallGeneration) return;
+            try {
+                const library = await new bll.BLL({ homey: this.homey, modules: this.modules, silent: this.silent });
+                if (this._destroyed || generation !== this._uninstallGeneration) {
+                    library.destroy();
+                    return;
+                }
+                this._l = library;
                 BL._L = bll.BLL;
                 if (old_bll) old_bll.destroy();
-            } else {
-                await new bll.BLL({ homey: this.homey, modules: this.modules, silent: this.silent });
+                BL._version = version;
+            } finally {
+                if (this._destroyed || generation !== this._uninstallGeneration) {
+                    for (const key of BLL_EXPORT_KEYS) delete BL[key];
+                }
             }
-            BL._version = version;// || await this.api.getVersion();
-        } catch (error) {
-            BL.homey.error('BL.initBll', error);
-        }
+        });
+        BL._libraryInitializing = initializing.catch(error => this.homey.error('BL.initBll', error));
+        await initializing;
         BL.homey.log('initBll loading done');
         return this;
     }
@@ -483,33 +469,19 @@ class BL {
      * @returns {Promise<Object>} Library response containing the bundle file.
      */
     async getLibrary(libraryName) {
-        if(BL.homey.app.id === 'net.i-dev.betterlogic') return BL.homey.app.getLibrary(libraryName);
+        if (this.homey.app.id === 'net.i-dev.betterlogic') return this.homey.app.getLibrary(libraryName);
 
-        let defer = new Defer();
-        defer.promise.then(() => { }).catch(() => { });
-        BL.homey.setTimeout(() => (!defer || defer.isDefered ? null : defer.reject('Timeout: 5000')) & (defer = null), 5000);
+        let timeout;
+        const expired = new Promise((resolve, reject) => {
+            timeout = this.homey.setTimeout(() => reject(new Error('Timeout: 5000')), 5000);
+        });
         try {
-            this.getAppApi('net.i-dev.betterlogic', 'Better Logic Library').then((api) => {
-                try {
-                    api.get('/library/' + libraryName).then((x) => !defer || defer.isDefered ? null : defer.resolve(x) & (defer = null)).catch(err => !defer || defer.isDefered ? null : defer.reject(err) & (defer = null));
-                } catch (err) { // Try once more.                                        
-                    defer.reject(new Error(err));
-                    // try {
-                    //     defer.resolve(api.get('/library/' + libraryName));
-                    // } catch (error) {
-                    //     defer.reject(new Error(error));
-                    //     //throw new Error(error);
-                    // }
-                }
-            }).catch(err => !defer || defer.isDefered ? null : defer.reject(err) & (defer = null));
-
-        } catch (err) {
-            console.log(err);
-            if (defer) defer.reject(new Error(err));
-            defer = null;
-            //throw new Error(err);
+            const request = this.getAppApi('net.i-dev.betterlogic', 'Better Logic Library')
+                .then(api => api.get('/library/' + libraryName));
+            return await Promise.race([request, expired]);
+        } finally {
+            clearTimeout(timeout);
         }
-        return defer.promise;
     }
 
     /**
@@ -536,20 +508,15 @@ class BL {
      * @throws {Error} If the API client cannot be obtained or the target app is unavailable.
      */
     async getAppApi(appId, appname, onlyApi) {
-        try {
-            if (!this.api) this.api = this.homey.api.getApiApp(appId);
-        } catch (error) {
-            throw new Error(error);
+        if (!this._appApi) {
+            const api = this.homey.api.getApiApp(appId);
+            if (!api) throw new Error(appname + ' is not installed.');
+            api.on('install', this._installListener);
+            api.on('uninstall', this._uninstallListener);
+            this._appApi = api;
         }
-        if (onlyApi === true) return this.api;
-        if (!this.api) throw new Error(appname + ' is not installed.');
-        else {
-            try {
-                BL._isLoaded = await this.api.getInstalled();
-            } catch (error) { }
-            if (!BL._isLoaded) throw new Error(appname + ' is not installed.');
-        }
-        return this.api;
+        if (!onlyApi && !await this._appApi.getInstalled()) throw new Error(appname + ' is not installed.');
+        return this._appApi;
     }
 
     /**

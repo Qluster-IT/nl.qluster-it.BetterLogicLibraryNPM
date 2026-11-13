@@ -152,7 +152,7 @@ export class BL {
      */
     static clearObj(obj: any): void;
     /**
-     * Cleans up the current BLL instance and its Homey/realtime listeners.
+     * Cleans up the current BLL instance and its install, uninstall, unload and realtime listeners.
      * The misspelling is retained for compatibility with existing callers.
      * @returns {void}
      */
@@ -220,6 +220,14 @@ export class BL {
     modules: string[];
     waitTime: number;
     isReady: boolean;
+    _destroyed: boolean;
+    _uninstallGeneration: number;
+    _previousLibraryInitialization: any;
+    _installListener: () => void;
+    _uninstallListener: () => void;
+    api: any;
+    _l: any;
+    _defer: Defer;
     /**
      * Loads or refreshes the BLL API and, when available, the requested modules.
      * @param {Object} [options={}] Initialization controls.
@@ -229,9 +237,12 @@ export class BL {
     init({ reload }?: {
         reload?: boolean;
     }): Promise<BL>;
-    api: any;
+    _initializing: any;
+    /** @private @returns {Promise<BL>} */
+    private initialize;
     /**
      * Promise resolved when the BLL instance becomes ready.
+     * Resolves only once; use `BL.isReady` to check availability after a stop.
      * @type {Promise<BL>}
      */
     get ready(): Promise<BL>;
@@ -242,7 +253,6 @@ export class BL {
      */
     private initBll;
     bllFile: any;
-    _l: any;
     /**
      * Retrieves a library bundle from this app or from the Better Logic Library API.
      * @private
@@ -268,6 +278,7 @@ export class BL {
      * @throws {Error} If the API client cannot be obtained or the target app is unavailable.
      */
     private getAppApi;
+    _appApi: any;
     /**
      * Gets all Better Logic variables from the Better Logic Library app.
      * @returns {Promise<*>} Variables returned by the Better Logic Library app.

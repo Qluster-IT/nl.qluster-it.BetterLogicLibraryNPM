@@ -224,8 +224,8 @@ export class BL {
     _previousLibraryInitialization: any;
     _installListener: () => void;
     _uninstallListener: () => void;
-    api: any;
     _l: any;
+    api: any;
     _defer: Defer;
     /**
      * Loads or refreshes the BLL API and, when available, the requested modules.

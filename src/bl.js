@@ -301,7 +301,6 @@ class BL {
             this.isReady = false;
             if (this.api) {
                 this.api.off('realtime', this.realtimeFunction);
-                this.api = null;
             }
             if (BL.Current === this) {
                 BL.isReady = BL._isLoaded = false;
@@ -316,6 +315,7 @@ class BL {
                     }
                 }
             }
+            this.api = null;
         };
 
         BL._defer = this._defer = new Defer();
@@ -470,16 +470,17 @@ class BL {
     async getLibrary(libraryName) {
         if (this.homey.app.id === 'net.i-dev.betterlogic') return this.homey.app.getLibrary(libraryName);
 
+        const homey = this.homey;
         let timeout;
         const expired = new Promise((resolve, reject) => {
-            timeout = this.homey.setTimeout(() => reject(new Error('Timeout: 5000')), 5000);
+            timeout = homey.setTimeout(() => reject(new Error('Timeout: 5000')), 5000);
         });
         try {
             const request = this.getAppApi('net.i-dev.betterlogic', 'Better Logic Library')
                 .then(api => api.get('/library/' + libraryName));
             return await Promise.race([request, expired]);
         } finally {
-            clearTimeout(timeout);
+            homey.clearTimeout(timeout);
         }
     }
 
@@ -559,6 +560,16 @@ class BL {
 
 }
 
+const deferTimeouts = new WeakMap();
+
+function clearDeferTimeout(defer) {
+    const timer = deferTimeouts.get(defer);
+    if (!timer) return;
+    timer.homey.clearTimeout(timer.handle);
+    deferTimeouts.delete(defer);
+    delete defer.timeout;
+}
+
 /**
  * Wraps a promise with explicit resolve/reject controls and optional forwarding.
  */
@@ -587,13 +598,15 @@ class Defer {
             this._reject = reject;
         });
         if (timeout) {
-            this.timeout = BL.homey.setTimeout(function () {
+            const homey = BL.homey;
+            this.timeout = homey.setTimeout(function () {
                 if (!this.isDefered && this.promise) {
                     this.reject();
                     //if (this.promise.resolve) this.promise.resolve();
                     if (onTimeout) onTimeout();
                 }
             }.bind(this), timeout);
+            deferTimeouts.set(this, { homey, handle: this.timeout });
         }
         if (originalPromise && originalPromise.then) originalPromise.then((val1, val2, val3, val4) => this.resolve(val1, val2, val3, val4)).catch((val1, val2, val3, val4) => this.reject(val1, val2, val3, val4));
     }
@@ -623,14 +636,14 @@ class Defer {
      * @param {*} val1 Resolution value.
      * @returns {Promise<*>} The wrapped promise.
      */
-    resolve(val1, val2, val3, val4) { if (this.timeout) clearTimeout(this.timeout); this.isDefered = true; this._resolve(val1, val2, val3, val4); return this.promise; }
+    resolve(val1, val2, val3, val4) { clearDeferTimeout(this); this.isDefered = true; this._resolve(val1, val2, val3, val4); return this.promise; }
 
     /**
      * Rejects the wrapped promise and clears its timeout.
      * @param {*} val1 Rejection reason.
      * @returns {Promise<*>} The wrapped promise.
      */
-    reject(val1, val2, val3, val4) { if (this.timeout) clearTimeout(this.timeout); this.isDefered = true; this._reject(val1, val2, val3, val4); return this.promise; }
+    reject(val1, val2, val3, val4) { clearDeferTimeout(this); this.isDefered = true; this._reject(val1, val2, val3, val4); return this.promise; }
 }
 
 

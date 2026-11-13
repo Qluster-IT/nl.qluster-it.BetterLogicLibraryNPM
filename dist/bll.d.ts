@@ -17,6 +17,7 @@ export class BLL {
     /**@type {Object} */
     get homey(): any;
     silent: any;
+    detroy(): void;
     destroy(): void;
     sleep(ms: any): Promise<any>;
     init({ modules }?: {

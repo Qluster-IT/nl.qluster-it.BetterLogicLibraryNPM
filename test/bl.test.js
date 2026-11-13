@@ -1,7 +1,79 @@
 const assert = require('node:assert/strict');
 const { EventEmitter } = require('node:events');
 const { test } = require('node:test');
-const { BL } = require('../src/bl');
+const { BL, Defer } = require('../src/bl');
+
+test('timed deferred promises release their original Homey timer on resolution, rejection, and timeout', async () => {
+    for (const action of ['resolve', 'reject', 'timeout']) {
+        const timers = new Map();
+        let cancelled = 0;
+        const owner = {
+            setTimeout(callback) {
+                const handle = {};
+                timers.set(handle, callback);
+                return handle;
+            },
+            clearTimeout(handle) { cancelled++; timers.delete(handle); }
+        };
+        BL.homey = owner;
+        let expired = 0;
+        const deferred = new Defer(1000, undefined, () => { expired++; });
+        const callback = timers.get(deferred.timeout);
+        BL.homey = { clearTimeout() { assert.fail('Timer cancellation must use its original owner'); } };
+        if (action === 'resolve') {
+            deferred.resolve('done');
+            assert.equal(await deferred.promise, 'done');
+        } else {
+            const rejected = assert.rejects(deferred.promise);
+            if (action === 'reject') deferred.reject(new Error('failed'));
+            else callback();
+            await rejected;
+        }
+        assert.equal(cancelled, 1);
+        assert.equal(timers.size, 0);
+        assert.equal(deferred.timeout, undefined);
+        assert.equal(expired, action === 'timeout' ? 1 : 0);
+    }
+});
+
+test('bundle requests release Homey deadline bookkeeping on success and failure', async t => {
+    t.after(() => BL.destroy());
+    for (const fails of [false, true]) {
+        const { homey, api } = createLifecycleHomey();
+        const timers = new Set();
+        homey.setTimeout = (...args) => {
+            const handle = setTimeout(...args);
+            timers.add(handle);
+            return handle;
+        };
+        homey.clearTimeout = handle => { timers.delete(handle); clearTimeout(handle); };
+        if (fails) api.get = async () => { throw new Error('bundle unavailable'); };
+        const bl = await BL.init({ homey });
+        assert.equal(bl.isReady, !fails);
+        assert.equal(timers.size, 0);
+    }
+});
+
+test('module cleanup retains API access until its realtime listeners have been removed', async t => {
+    t.after(() => BL.destroy());
+    for (const action of ['uninstall', 'destroy']) {
+        const { homey, api, errors } = createLifecycleHomey();
+        const bl = await BL.init({ homey });
+        const listener = () => {};
+        api.on('realtime', listener);
+        let destroyed = false;
+        bl.l.destroy = () => {
+            BL.Current.api.off('realtime', listener);
+            destroyed = true;
+        };
+        if (action === 'uninstall') api.emit('uninstall');
+        else BL.destroy();
+        assert.equal(destroyed, true);
+        assert.equal(api.listenerCount('realtime'), 0);
+        assert.deepEqual(errors, []);
+        assert.equal(bl.api, null);
+    }
+});
 
     function createLifecycleHomey() {
         const homey = new EventEmitter();
@@ -13,6 +85,7 @@ const { BL } = require('../src/bl');
         homey.log = () => {};
         homey.error = (...args) => errors.push(args);
         homey.setTimeout = setTimeout;
+        homey.clearTimeout = clearTimeout;
         api.getInstalled = async () => true;
         api.getVersion = async () => '1';
         api.get = async () => ({

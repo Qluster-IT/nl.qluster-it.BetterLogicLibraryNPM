@@ -88,6 +88,10 @@ retry initialization; uninstall/stop events clear readiness and detach realtime
 updates. The `bl.ready` promise resolves on the first successful load and stays
 resolved after a later stop, so use `BL.isReady` to check current availability.
 Homey's `unload` event removes all listeners without replacing your app's `onUninit`.
+The API remains available until loaded modules have removed their own realtime
+listeners during cleanup.
+Library-request deadlines and timed `Defer` promises cancel timers through their
+original Homey instance, also releasing the SDK's timer bookkeeping.
 
 To include modules like lodash, follow these steps:
 * Include the module(s) in the BL initialization:

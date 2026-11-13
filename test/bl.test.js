@@ -30,7 +30,7 @@ const { BL } = require('../src/bl');
         const { homey, api } = createLifecycleHomey();
         let installed = false;
         api.getInstalled = async () => installed;
-        t.after(() => BL.detroy());
+        t.after(() => BL.destroy());
         const bl = await BL.init({ homey });
         const ready = bl.ready;
         assert.equal(BL.isReady, false);
@@ -71,7 +71,7 @@ const { BL } = require('../src/bl');
             started();
             return new Promise(resolve => { finish = resolve; });
         };
-        t.after(() => BL.detroy());
+        t.after(() => BL.destroy());
         const initializing = BL.init({ homey });
         await checking;
         api.emit('install');
@@ -83,7 +83,7 @@ const { BL } = require('../src/bl');
     });
 
     test('uninstall and replacement invalidate pending installation checks', async (t) => {
-        t.after(() => BL.detroy());
+        t.after(() => BL.destroy());
         for (const action of ['uninstall', 'replace']) {
             const { homey, api } = createLifecycleHomey();
             let finish;
@@ -113,7 +113,7 @@ const { BL } = require('../src/bl');
         const { homey, api, errors } = createLifecycleHomey();
         const get = api.get;
         api.get = async () => { throw new Error('App Not Ready'); };
-        t.after(() => BL.detroy());
+        t.after(() => BL.destroy());
         const bl = await BL.init({ homey });
         let ready = false;
         bl.ready.then(() => { ready = true; });
@@ -131,7 +131,7 @@ test('installation check errors leave BLL unready and allow a later retry', asyn
     const { homey, api, errors } = createLifecycleHomey();
     const failure = new Error('installation check failed');
     api.getInstalled = async () => { throw failure; };
-    t.after(() => BL.detroy());
+    t.after(() => BL.destroy());
     const bl = await BL.init({ homey });
     assert.equal(bl.isReady, false);
     assert.equal(BL.isReady, false);
@@ -149,7 +149,7 @@ test('replacement waits for an in-progress module constructor and rejects its st
     let started;
     const constructing = new Promise(resolve => { started = resolve; });
     const gate = new Promise(resolve => { finish = resolve; });
-    t.after(() => BL.detroy());
+    t.after(() => BL.destroy());
     const firstInit = BL.init({ homey: first.homey });
     const firstBl = BL.Current;
     firstBl.requireFromString = () => ({
@@ -188,7 +188,7 @@ test('late bundle responses cannot overwrite the replacement library', async (t)
         started();
         return new Promise(resolve => { finish = resolve; });
     };
-    t.after(() => BL.detroy());
+    t.after(() => BL.destroy());
     const firstInit = BL.init({ homey: first.homey });
     await downloading;
     const secondBl = await BL.init({ homey: second.homey });
@@ -207,7 +207,7 @@ test('unload and reinitialization clean up BLL without replacing app lifecycle m
     const firstHomey = first.homey;
     const firstApi = first.api;
     const onUninit = firstHomey.app.onUninit;
-    t.after(() => BL.detroy());
+    t.after(() => BL.destroy());
     await BL.init({ homey: firstHomey });
 
     assert.equal(firstHomey.app.onUninit, onUninit);
@@ -252,7 +252,7 @@ test('support notification uses the localized app name and is sent only once', a
     homey.api = { getApiApp: () => api };
     homey.log = () => {};
     homey.error = (message, error) => assert.fail(`${message}: ${error}`);
-    t.after(() => BL.detroy());
+    t.after(() => BL.destroy());
 
     await BL.init({ homey });
     await BL.init({ homey });
@@ -279,7 +279,7 @@ test('support notification is translated for all Homey languages with an English
     homey.api = { getApiApp: () => api };
     homey.log = () => {};
     homey.error = (message, error) => assert.fail(`${message}: ${error}`);
-    t.after(() => BL.detroy());
+    t.after(() => BL.destroy());
 
     const excerpts = {};
     for (language of ['en', 'nl', 'de', 'fr', 'it', 'sv', 'no', 'es', 'da', 'ru', 'pl', 'ko', 'ar', 'unknown']) {

@@ -181,10 +181,10 @@ class BL {
      * @returns {Promise<BL>} The initialized BLL wrapper.
      */
     static async init({ homey, modules, silent, waitTime, required } = {}) {
-        if (BL.Current) BL.detroy();
+        if (BL.Current) BL.destroy();
         let bl = new BL({ homey, modules, silent, waitTime, required });
 
-        homey.once('unload', BL.detroy);
+        homey.once('unload', BL.destroy);
 
         return await bl.init({ reload: true });
     }
@@ -242,23 +242,22 @@ class BL {
 
     /**
      * Cleans up the current BLL instance and its install, uninstall, unload and realtime listeners.
-     * The misspelling is retained for compatibility with existing callers.
      * @returns {void}
      */
-    static detroy() {
+    static destroy() {
         const current = BL.Current;
         if (!current) return;
         current._destroyed = true;
         current.isReady = BL.isReady = false;
         try {
-            current.homey.removeListener('unload', BL.detroy);
+            current.homey.removeListener('unload', BL.destroy);
             if (current._appApi) {
                 current._appApi.off('install', current._installListener);
                 current._appApi.off('uninstall', current._uninstallListener);
             }
             current._uninstallListener();
         } catch (error) {
-            current.homey.error('BL.detroy', error);
+            current.homey.error('BL.destroy', error);
         } finally {
             BL._current = null;
         }

@@ -153,10 +153,9 @@ export class BL {
     static clearObj(obj: any): void;
     /**
      * Cleans up the current BLL instance and its install, uninstall, unload and realtime listeners.
-     * The misspelling is retained for compatibility with existing callers.
      * @returns {void}
      */
-    static detroy(): void;
+    static destroy(): void;
     /**
      * Override hook invoked when a variable-change realtime event is received.
      * The default implementation intentionally does nothing.

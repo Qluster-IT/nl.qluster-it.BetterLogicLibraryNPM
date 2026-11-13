@@ -46,11 +46,14 @@ class BL {
      * Evaluates a BLL expression and supplies properties to its execution context.
      * @param {string} expression Expression to evaluate.
      * @param {Object} contextProperties Properties to add to the expression context.
-     * @returns {Promise<Object>} The expression result.
-     * @throws {Error} If BLL is not ready or expression evaluation is unavailable.
+     * @returns {Promise<Object>} The expression result, or the expression itself in silent mode when BLL is unavailable or fails.
+     * @throws {Error} If BLL is not ready or evaluation fails and silent mode is disabled.
      */
     static async express(expression, contextProperties) {
-        if (!BL.isReady || !BL.l.express) throw new Error('Better Logic Library is not loaded.');//return undefined;
+        if (!BL.isReady || !BL.l || !BL.l.express) {
+            if (!BL.Current || BL.Current.silent) return expression;
+            throw new Error('Better Logic Library is not loaded.');
+        }
 
         return await BL.l.express.apply(BL.l, arguments);
     }
@@ -175,7 +178,7 @@ class BL {
      * @param {Object} options Initialization options.
      * @param {Object} options.homey Homey instance used by this app.
      * @param {string[]} [options.modules] BLL modules to load.
-     * @param {boolean} [options.silent] Whether to initialize the loaded BLL silently.
+     * @param {boolean} [options.silent] When true, BLL failures return the original text/expression instead of throwing. Defaults to true when no modules are loaded or BLL is not required.
      * @param {number} [options.waitTime] Wait-time setting passed to the BLL wrapper.
      * @param {boolean} [options.required] Whether the app requires BLL.
      * @returns {Promise<BL>} The initialized BLL wrapper.
@@ -268,7 +271,7 @@ class BL {
      * @param {Object} options Constructor options.
      * @param {Object} options.homey Homey instance used by this app.
      * @param {string[]} [options.modules] BLL modules to load.
-     * @param {boolean} [options.silent] Whether to initialize the loaded BLL silently.
+     * @param {boolean} [options.silent] When true, BLL failures return the original text/expression instead of throwing. Defaults to true when no modules are loaded or BLL is not required.
      * @param {number} [options.waitTime] Wait-time setting passed to the BLL wrapper.
      * @param {boolean} [options.required] Whether the app requires BLL.
      */

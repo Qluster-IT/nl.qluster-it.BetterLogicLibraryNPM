@@ -215,6 +215,19 @@ test('installation check errors leave BLL unready and allow a later retry', asyn
     assert.equal(bl.isReady, true);
 });
 
+test('express returns the expression when BLL is not installed in silent mode and throws for required apps', async (t) => {
+    t.after(() => BL.destroy());
+    for (const modules of [undefined, ['_']]) {
+        const { homey, api } = createLifecycleHomey();
+        api.getInstalled = async () => false;
+        const bl = await BL.init({ homey, modules });
+        assert.equal(bl.silent, !modules);
+        if (bl.silent) assert.equal(await BL.express('1 + 1'), '1 + 1');
+        else await assert.rejects(BL.express('1 + 1'), /not loaded/);
+        BL.destroy();
+    }
+});
+
 test('replacement waits for an in-progress module constructor and rejects its stale exports', async (t) => {
     const first = createLifecycleHomey();
     const second = createLifecycleHomey();

@@ -28,6 +28,6 @@ declare class clsNumber {
     private get;
     toString(style: any, styleOption1: any, styleOption2: any, decimals: any): any;
     format(style: any, styleOption1: any, styleOption2: any, decimals: any): any;
-    countDecimals(value: any): any;
+    countDecimals(value: any): number;
 }
 //# sourceMappingURL=number.d.ts.map

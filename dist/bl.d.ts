@@ -25,8 +25,8 @@ export class BL {
      * Evaluates a BLL expression and supplies properties to its execution context.
      * @param {string} expression Expression to evaluate.
      * @param {Object} contextProperties Properties to add to the expression context.
-     * @returns {Promise<Object>} The expression result.
-     * @throws {Error} If BLL is not ready or expression evaluation is unavailable.
+     * @returns {Promise<Object>} The expression result, or the expression itself in silent mode when BLL is unavailable or fails.
+     * @throws {Error} If BLL is not ready or evaluation fails and silent mode is disabled.
      */
     static express(expression: string, contextProperties: any, ...args: any[]): Promise<any>;
     /**
@@ -133,7 +133,7 @@ export class BL {
      * @param {Object} options Initialization options.
      * @param {Object} options.homey Homey instance used by this app.
      * @param {string[]} [options.modules] BLL modules to load.
-     * @param {boolean} [options.silent] Whether to initialize the loaded BLL silently.
+     * @param {boolean} [options.silent] When true, BLL failures return the original text/expression instead of throwing. Defaults to true when no modules are loaded or BLL is not required.
      * @param {number} [options.waitTime] Wait-time setting passed to the BLL wrapper.
      * @param {boolean} [options.required] Whether the app requires BLL.
      * @returns {Promise<BL>} The initialized BLL wrapper.
@@ -193,7 +193,7 @@ export class BL {
      * @param {Object} options Constructor options.
      * @param {Object} options.homey Homey instance used by this app.
      * @param {string[]} [options.modules] BLL modules to load.
-     * @param {boolean} [options.silent] Whether to initialize the loaded BLL silently.
+     * @param {boolean} [options.silent] When true, BLL failures return the original text/expression instead of throwing. Defaults to true when no modules are loaded or BLL is not required.
      * @param {number} [options.waitTime] Wait-time setting passed to the BLL wrapper.
      * @param {boolean} [options.required] Whether the app requires BLL.
      */
@@ -224,9 +224,9 @@ export class BL {
     _previousLibraryInitialization: any;
     _installListener: () => void;
     _uninstallListener: () => void;
+    _defer: Defer;
     _l: any;
     api: any;
-    _defer: Defer;
     /**
      * Loads or refreshes the BLL API and, when available, the requested modules.
      * @param {Object} [options={}] Initialization controls.
@@ -239,9 +239,14 @@ export class BL {
     _initializing: any;
     /** @private @returns {Promise<BL>} */
     private initialize;
+    /** @private */
+    private waitForReady;
+    _cancelReady: () => any;
+    _wakeReady: any;
     /**
-     * Promise resolved when the BLL instance becomes ready.
-     * Resolves only once; use `BL.isReady` to check availability after a stop.
+     * Promise resolved when the BLL instance becomes ready for the current
+     * availability cycle. A resolved promise is replaced when BLL becomes
+     * unavailable; a pending promise remains pending until the next successful load.
      * @type {Promise<BL>}
      */
     get ready(): Promise<BL>;

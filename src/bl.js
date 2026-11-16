@@ -199,33 +199,14 @@ class BL {
      * @returns {Promise<void>}
      */
     async realtimeFunction(event, data) {
-        let reload = false;
-        if(event==='variable_changed') {
+        if (event === 'api-ready' && data && data.ready === true) {
+            const current = BL.Current;
+            if (!current) return;
+            if (current._wakeReady) current._wakeReady();
+            else await current.init({ reload: current.isReady });
+        } else if(event==='variable_changed') {
             if(data && data.variable && data.variable.lastChanged) data.variable.lastChanged = new Date(data.variable.lastChanged);
             if(data) BL.onVariableUpdate({variable:data.variable, formattedDate:data.date});
-
-        } else if (event.startsWith('running')) {
-            if ((reload = (BL.homey.app.id !== 'net.i-dev.betterlogic' && event === 'running')) || ((event === 'running_2x' || event === 'running_3x') && !BL.isReady)) {
-                //this.runningReceived = true;
-                try {
-                    //if(!BL.Current.isReady) {
-                    BL.homey.log('BL.Current.init reload', reload);
-                    await BL.Current.init({ reload });
-
-                    //}
-                } catch (error) {
-                    BL.homey.error('BL.init', error);
-                }
-                // let x = async () => {
-                //     await BL.Current.initBll({ version: await BL.Current.api.getVersion() });
-                //     if (BL.Current.defer && !BL.Current.defer.isDefered) BL.Current.defer.resolve(this);
-                // };
-                // if (BL.Current.api.getInstalled()) x();
-
-                // else {
-                //     BL.homey.setTimeout(x, 15000);
-                // }
-            }
         }
     }
 
@@ -302,6 +283,13 @@ class BL {
         this._uninstallListener = () => {
             this._uninstallGeneration++;
             this.isReady = false;
+            if (this._cancelReady) this._cancelReady();
+            if (this._wakeReady) this._wakeReady();
+            if (this._defer.isDefered) {
+                this._defer = new Defer();
+                BL._defer = this._defer;
+                BL._ready = BL.ready = this._defer.promise;
+            }
             if (this.api) {
                 this.api.off('realtime', this.realtimeFunction);
             }
@@ -389,9 +377,19 @@ class BL {
             return this;
         }
         this.homey.settings.set('notification_bll_required', true);
-        if (!this.api) {
+        if (this.api !== api) {
             api.on('realtime', this.realtimeFunction);
             this.api = api;
+        }
+        if (this.homey.app.id !== 'net.i-dev.betterlogic') {
+            const ready = await this.waitForReady(api, generation);
+            if (!ready || this._destroyed || generation !== this._uninstallGeneration || this.api !== api) {
+                if (this.api === api) {
+                    api.off('realtime', this.realtimeFunction);
+                    this.api = null;
+                }
+                return this;
+            }
         }
         await this.initBll();
         if (this._destroyed || generation !== this._uninstallGeneration) return this;
@@ -400,9 +398,54 @@ class BL {
         return this;
     }
 
+    /** @private */
+    async waitForReady(api, generation) {
+        const current = () => !this._destroyed && generation === this._uninstallGeneration && this.api === api;
+        let timeout;
+        const expired = new Promise((resolve, reject) => {
+            timeout = this.homey.setTimeout(() => reject(new Error('Timed out waiting for the Better Logic Library /api-ready endpoint.')), 120000);
+        });
+        const cancelled = new Promise(resolve => { this._cancelReady = () => resolve(false); });
+        const probe = async () => {
+            let attempts = 0;
+            while (current()) {
+                const installed = await api.getInstalled();
+                if (!current() || !installed) return false;
+                attempts++;
+                try {
+                    const status = await api.get('/api-ready');
+                    if (!current()) return false;
+                    if (!status || typeof status.ready !== 'boolean') throw new Error('Invalid Better Logic Library /api-ready response.');
+                    if (status.ready) return true;
+                } catch (error) {
+                    if (!/^(App Not Ready|App Not Running|Missing implementation for api endpoint "getApiReady")$/.test(error.message)) throw error;
+                }
+                if (!current()) return false;
+                if (attempts === 5) throw new Error('Better Logic Library /api-ready did not confirm readiness after 5 checks.');
+                await new Promise(resolve => {
+                    const retry = this.homey.setTimeout(() => this._wakeReady(), 30000);
+                    this._wakeReady = () => {
+                        this.homey.clearTimeout(retry);
+                        this._wakeReady = null;
+                        resolve();
+                    };
+                });
+            }
+            return false;
+        };
+        try {
+            return await Promise.race([probe(), expired, cancelled]);
+        } finally {
+            this.homey.clearTimeout(timeout);
+            this._cancelReady = null;
+            if (this._wakeReady) this._wakeReady();
+        }
+    }
+
     /**
-     * Promise resolved when the BLL instance becomes ready.
-     * Resolves only once; use `BL.isReady` to check availability after a stop.
+     * Promise resolved when the BLL instance becomes ready for the current
+     * availability cycle. A resolved promise is replaced when BLL becomes
+     * unavailable; a pending promise remains pending until the next successful load.
      * @type {Promise<BL>}
      */
     get ready() { return this._defer.promise; }

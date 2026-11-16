@@ -47,7 +47,10 @@ test('bundle requests release Homey deadline bookkeeping on success and failure'
             return handle;
         };
         homey.clearTimeout = handle => { timers.delete(handle); clearTimeout(handle); };
-        if (fails) api.get = async () => { throw new Error('bundle unavailable'); };
+        if (fails) api.get = async uri => {
+            if (uri === '/api-ready') return { ready: true };
+            throw new Error('bundle unavailable');
+        };
         const bl = await BL.init({ homey });
         assert.equal(bl.isReady, !fails);
         assert.equal(timers.size, 0);
@@ -88,7 +91,7 @@ test('module cleanup retains API access until its realtime listeners have been r
         homey.clearTimeout = clearTimeout;
         api.getInstalled = async () => true;
         api.getVersion = async () => '1';
-        api.get = async () => ({
+        api.get = async uri => uri === '/api-ready' ? { ready: true } : ({
             file: `class BLL {
                 static get Current() { return this.current; }
                 constructor() { BLL.current = this; }
@@ -116,14 +119,14 @@ test('module cleanup retains API access until its realtime listeners have been r
         await new Promise(resolve => setImmediate(resolve));
         assert.equal(bl.isReady, true);
         assert.equal(api.listenerCount('realtime'), 1);
-
         api.emit('uninstall');
         assert.equal(BL.isReady, false);
         assert.equal(bl.isReady, false);
         assert.equal(api.listenerCount('realtime'), 0);
-        assert.equal(bl.ready, ready);
+        assert.notEqual(bl.ready, ready);
+        const nextReady = bl.ready;
         api.emit('install');
-        await new Promise(resolve => setImmediate(resolve));
+        await nextReady;
         assert.equal(BL.isReady, true);
         assert.equal(api.listenerCount('realtime'), 1);
         homey.emit('unload');
@@ -151,6 +154,83 @@ test('module cleanup retains API access until its realtime listeners have been r
         finish(false);
         const bl = await initializing;
         await bl.ready;
+        assert.equal(bl.isReady, true);
+        assert.equal(api.listenerCount('realtime'), 1);
+    });
+
+    test('BLL waits for the api-ready endpoint and realtime events only expedite a confirming probe', async t => {
+        const { homey, api } = createLifecycleHomey();
+        const get = api.get;
+        let ready = false;
+        let probes = 0;
+        api.get = async uri => {
+            if (uri === '/api-ready') {
+                assert.equal(api.listenerCount('realtime'), 1);
+                probes++;
+                return { ready };
+            }
+            return get(uri);
+        };
+        const timers = new Map();
+        homey.setTimeout = (callback, milliseconds) => {
+            const handle = { callback, milliseconds };
+            timers.set(handle, handle);
+            return handle;
+        };
+        homey.clearTimeout = handle => timers.delete(handle);
+        t.after(() => BL.destroy());
+
+        const initializing = BL.init({ homey });
+        const bl = BL.Current;
+        const waiting = bl.ready;
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(bl.isReady, false);
+        assert.equal(probes, 1);
+        assert.ok([...timers.values()].some(timer => timer.milliseconds === 30000));
+
+        api.emit('realtime', 'api-ready', { ready: true });
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(bl.isReady, false, 'the event must not be trusted without an endpoint confirmation');
+
+        ready = true;
+        api.emit('realtime', 'api-ready', { ready: true });
+        await Promise.all([initializing, waiting]);
+        assert.equal(bl.isReady, true);
+        assert.equal(probes, 3);
+        assert.equal(api.listenerCount('realtime'), 1);
+        assert.equal(timers.size, 0);
+    });
+
+    test('uninstall during an api-ready probe ignores its stale success and reuses the pending readiness promise', async t => {
+        const { homey, api } = createLifecycleHomey();
+        const get = api.get;
+        let finishProbe;
+        let probeStarted;
+        const started = new Promise(resolve => { probeStarted = resolve; });
+        api.get = uri => {
+            if (uri === '/api-ready') {
+                probeStarted();
+                return new Promise(resolve => { finishProbe = resolve; });
+            }
+            return get(uri);
+        };
+        t.after(() => BL.destroy());
+
+        const initializing = BL.init({ homey });
+        const bl = BL.Current;
+        const ready = bl.ready;
+        await started;
+        api.emit('uninstall');
+        await initializing;
+        finishProbe({ ready: true });
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(bl.isReady, false);
+        assert.equal(api.listenerCount('realtime'), 0);
+        assert.equal(bl.ready, ready);
+
+        api.get = async uri => uri === '/api-ready' ? { ready: true } : get(uri);
+        api.emit('install');
+        await ready;
         assert.equal(bl.isReady, true);
         assert.equal(api.listenerCount('realtime'), 1);
     });
@@ -185,7 +265,10 @@ test('module cleanup retains API access until its realtime listeners have been r
     test('BLL bundle failure does not resolve readiness and can be retried', async (t) => {
         const { homey, api, errors } = createLifecycleHomey();
         const get = api.get;
-        api.get = async () => { throw new Error('App Not Ready'); };
+        api.get = async uri => {
+            if (uri === '/api-ready') return { ready: true };
+            throw new Error('App Not Ready');
+        };
         t.after(() => BL.destroy());
         const bl = await BL.init({ homey });
         let ready = false;
@@ -270,7 +353,8 @@ test('late bundle responses cannot overwrite the replacement library', async (t)
     let finish;
     let started;
     const downloading = new Promise(resolve => { started = resolve; });
-    first.api.get = () => {
+    first.api.get = uri => {
+        if (uri === '/api-ready') return Promise.resolve({ ready: true });
         started();
         return new Promise(resolve => { finish = resolve; });
     };

@@ -83,10 +83,16 @@ All you need to do, is run the text you wish to decode through the decoder:
 
 
 ## Including modules
-`BL.isReady` becomes true only after the BLL bundle has loaded. Install/start events
-retry initialization; uninstall/stop events clear readiness and detach realtime
-updates. The `bl.ready` promise resolves on the first successful load and stays
-resolved after a later stop, so use `BL.isReady` to check current availability.
+`BL.isReady` becomes true only after the BLL app confirms its `/api-ready`
+endpoint and the requested BLL bundle has loaded. The package subscribes to
+realtime events before probing, and the `api-ready` event only expedites a
+confirming endpoint request. Readiness checks are bounded to five requests,
+30-second retry intervals, and a two-minute deadline. Install/start events
+retry initialization; uninstall/stop events clear readiness and detach
+realtime updates. `bl.ready` resolves for the current availability cycle. After
+BLL becomes unavailable, a resolved promise is replaced so callers can await the
+next successful load. The BLL app itself skips the endpoint handshake to avoid
+waiting for its own startup to finish.
 Homey's `unload` event removes all listeners without replacing your app's `onUninit`.
 The API remains available until loaded modules have removed their own realtime
 listeners during cleanup.

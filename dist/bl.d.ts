@@ -82,8 +82,8 @@ export class BL {
     static get isLoaded(): boolean;
     /**
      * Checks whether a BLL instance is available.
-     * @returns {Promise<boolean>} `true` when BLL is available, otherwise `false`.
-     * @throws {Error} If the current app requires BLL but it is not running.
+     * @returns {Promise<boolean>} `true` when BLL is ready, otherwise `false`.
+     * @throws {Error} If silent mode is disabled and BLL is not ready.
      */
     static isInit(): Promise<boolean>;
     /** @private */
@@ -225,7 +225,6 @@ export class BL {
     _installListener: () => void;
     _uninstallListener: () => void;
     _defer: Defer;
-    _l: any;
     api: any;
     /**
      * Loads or refreshes the BLL API and, when available, the requested modules.
@@ -257,6 +256,7 @@ export class BL {
      */
     private initBll;
     bllFile: any;
+    _l: any;
     /**
      * Retrieves a library bundle from this app or from the Better Logic Library API.
      * @private

@@ -57,25 +57,25 @@ test('bundle requests release Homey deadline bookkeeping on success and failure'
     }
 });
 
-test('module cleanup retains API access until its realtime listeners have been removed', async t => {
+test('final module cleanup retains API access until its realtime listeners have been removed', async t => {
     t.after(() => BL.destroy());
-    for (const action of ['uninstall', 'destroy']) {
-        const { homey, api, errors } = createLifecycleHomey();
-        const bl = await BL.init({ homey });
-        const listener = () => {};
-        api.on('realtime', listener);
-        let destroyed = false;
-        bl.l.destroy = () => {
-            BL.Current.api.off('realtime', listener);
-            destroyed = true;
-        };
-        if (action === 'uninstall') api.emit('uninstall');
-        else BL.destroy();
-        assert.equal(destroyed, true);
-        assert.equal(api.listenerCount('realtime'), 0);
-        assert.deepEqual(errors, []);
-        assert.equal(bl.api, null);
-    }
+    const { homey, api, errors } = createLifecycleHomey();
+    const bl = await BL.init({ homey });
+    const listener = () => {};
+    api.on('realtime', listener);
+    let destroyed = false;
+    bl.l.destroy = () => {
+        BL.Current.api.off('realtime', listener);
+        destroyed = true;
+    };
+    api.emit('uninstall');
+    assert.equal(destroyed, false);
+    assert.equal(api.listenerCount('realtime'), 1);
+    BL.destroy();
+    assert.equal(destroyed, true);
+    assert.equal(api.listenerCount('realtime'), 0);
+    assert.deepEqual(errors, []);
+    assert.equal(bl.api, null);
 });
 
     function createLifecycleHomey() {
@@ -90,7 +90,7 @@ test('module cleanup retains API access until its realtime listeners have been r
         homey.setTimeout = setTimeout;
         homey.clearTimeout = clearTimeout;
         api.getInstalled = async () => true;
-        api.getVersion = async () => '1';
+        api.getVersion = async () => '1.0.0';
         api.get = async uri => uri === '/api-ready' ? { ready: true } : ({
             file: `class BLL {
                 static get Current() { return this.current; }
@@ -101,6 +101,120 @@ test('module cleanup retains API access until its realtime listeners have been r
         });
         return { homey, api, errors };
     }
+
+test('loaded modules survive stops and same or older versions, and reload on a newer version', async t => {
+    const { homey, api, errors } = createLifecycleHomey();
+    let version = '1.2.0';
+    api.getVersion = async () => version;
+    t.after(() => BL.destroy());
+    const bl = await BL.init({ homey, required: false });
+    const original = bl.l;
+    const module = { format: () => 'still available' };
+    BL.__ = module;
+    let destroyed = 0;
+    const destroy = original.destroy.bind(original);
+    original.destroy = () => { destroyed++; destroy(); };
+
+    api.emit('uninstall');
+    assert.equal(BL.isReady, false);
+    assert.equal(await BL.isInit(), false);
+    assert.equal(BL._, module);
+    assert.equal(BL._.format(), 'still available');
+    assert.equal(destroyed, 0);
+
+    const previousDebug = process.env.DEBUG;
+    process.env.DEBUG = '1';
+    try {
+        api.emit('install');
+        await bl.ready;
+        assert.equal(bl.l, original);
+        assert.equal(BL._, module);
+        assert.equal(destroyed, 0);
+    } finally {
+        if (previousDebug === undefined) delete process.env.DEBUG;
+        else process.env.DEBUG = previousDebug;
+    }
+
+    api.emit('uninstall');
+    version = '1.2.0-beta.1';
+    api.emit('install');
+    await bl.ready;
+    assert.equal(bl.l, original);
+    assert.equal(BL._, module);
+    assert.equal(destroyed, 0);
+
+    api.emit('uninstall');
+    version = '1.10.0';
+    let newModule;
+    bl.requireFromString = () => ({
+        BLL: class {
+            static get Current() { return this.current; }
+            constructor() {
+                assert.equal(destroyed, 1);
+                assert.equal(BL.__, undefined);
+                newModule = { format: () => 'new version' };
+                BL.__ = newModule;
+                this.constructor.current = this;
+            }
+            destroy() { this.constructor.current = null; }
+        },
+    });
+    api.emit('install');
+    await bl.ready;
+    assert.equal(destroyed, 1);
+    assert.notEqual(bl.l, original);
+    assert.equal(BL._, newModule);
+    assert.deepEqual(errors, []);
+});
+
+test('failure to obtain a version preserves loaded modules until a successful retry', async t => {
+    const { homey, api, errors } = createLifecycleHomey();
+    t.after(() => BL.destroy());
+    const bl = await BL.init({ homey, required: false });
+    const original = bl.l;
+    BL.__ = { value: 42 };
+    api.emit('uninstall');
+    api.getVersion = async () => { throw new Error('version unavailable'); };
+    await bl.init();
+    assert.equal(bl.isReady, false);
+    assert.equal(bl.l, original);
+    assert.equal(BL._.value, 42);
+    assert.match(errors[0][1].message, /version unavailable/);
+    api.getVersion = async () => '1.0.0';
+    await bl.init();
+    assert.equal(bl.isReady, true);
+    assert.equal(bl.l, original);
+});
+
+test('a newer version detected while running reloads the library', async t => {
+    const { homey, api } = createLifecycleHomey();
+    let version = '1.0.0-beta.2';
+    api.getVersion = async () => version;
+    t.after(() => BL.destroy());
+    const bl = await BL.init({ homey });
+    const original = bl.l;
+    version = '1.0.0-beta.10';
+    api.emit('realtime', 'api-ready', { ready: true });
+    await bl._initializing;
+    assert.equal(bl.isReady, true);
+    assert.notEqual(bl.l, original);
+    assert.equal(BL._version, version);
+});
+
+test('initial load remains possible when the version lookup fails', async t => {
+    const { homey, api, errors } = createLifecycleHomey();
+    api.getVersion = async () => { throw new Error('version unavailable'); };
+    t.after(() => BL.destroy());
+    const bl = await BL.init({ homey });
+    const original = bl.l;
+    assert.equal(bl.isReady, true);
+    assert.match(errors[0][1].message, /version unavailable/);
+    api.emit('uninstall');
+    api.getVersion = async () => '1.0.0';
+    await bl.init();
+    assert.equal(bl.isReady, true);
+    assert.equal(bl.l, original);
+});
 
     test('BLL retries on install, clears readiness on uninstall and removes lifecycle listeners', async (t) => {
         const { homey, api } = createLifecycleHomey();

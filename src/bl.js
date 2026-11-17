@@ -7,6 +7,37 @@
 
 const BLL_EXPORT_KEYS = ['_L', '_version', '__', '_math', 'math', '_datetime', '_number', '_proto', '_json', 'submodules'];
 
+function compareVersions(a, b) {
+    const parse = version => {
+        const match = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/.exec(version);
+        if (!match) throw new Error(`Invalid Better Logic Library version: ${version}`);
+        return { numbers: match.slice(1, 4), prerelease: match[4] && match[4].split('.') };
+    };
+    const numeric = (left, right) => {
+        left = left.replace(/^0+(?=\d)/, '');
+        right = right.replace(/^0+(?=\d)/, '');
+        return left.length === right.length ? (left === right ? 0 : left > right ? 1 : -1) : left.length > right.length ? 1 : -1;
+    };
+    const left = parse(a);
+    const right = parse(b);
+    for (let i = 0; i < 3; i++) {
+        const result = numeric(left.numbers[i], right.numbers[i]);
+        if (result) return result;
+    }
+    if (!left.prerelease || !right.prerelease) return left.prerelease ? -1 : right.prerelease ? 1 : 0;
+    for (let i = 0; i < Math.max(left.prerelease.length, right.prerelease.length); i++) {
+        const l = left.prerelease[i];
+        const r = right.prerelease[i];
+        if (l === undefined) return -1;
+        if (r === undefined) return 1;
+        if (l === r) continue;
+        const ln = /^\d+$/.test(l);
+        const rn = /^\d+$/.test(r);
+        return ln && rn ? numeric(l, r) : ln ? -1 : rn ? 1 : l > r ? 1 : -1;
+    }
+    return 0;
+}
+
 /**
  * Loads and exposes the Better Logic Library for a Homey app.
  */
@@ -104,8 +135,8 @@ class BL {
 
     /**
      * Checks whether a BLL instance is available.
-     * @returns {Promise<boolean>} `true` when BLL is available, otherwise `false`.
-     * @throws {Error} If the current app requires BLL but it is not running.
+     * @returns {Promise<boolean>} `true` when BLL is ready, otherwise `false`.
+     * @throws {Error} If silent mode is disabled and BLL is not ready.
      */
     static async isInit() {
         // try {            
@@ -113,8 +144,8 @@ class BL {
         // } catch (error) {
 
         // }
-        if (!BL.l && BL && BL.Current && !BL.Current.silent) throw new Error('The Better Logic Library App is not running.');//
-        if (!BL.l) return false;
+        if (!BL.isReady && BL.Current && !BL.Current.silent) throw new Error('The Better Logic Library App is not running.');//
+        if (!BL.isReady) return false;
         return true;
         //return true;
     }
@@ -240,6 +271,14 @@ class BL {
                 current._appApi.off('uninstall', current._uninstallListener);
             }
             current._uninstallListener();
+            try {
+                if (!current.api) current.api = current._appApi;
+                if (current.l) current.l.destroy();
+            } finally {
+                current._l = null;
+                current.api = null;
+                for (const key of BLL_EXPORT_KEYS) delete BL[key];
+            }
         } catch (error) {
             current.homey.error('BL.destroy', error);
         } finally {
@@ -295,18 +334,8 @@ class BL {
             }
             if (BL.Current === this) {
                 BL.isReady = BL._isLoaded = false;
-                try {
-                    if (this.l) this.l.destroy();
-                } catch (error) {
-                    this.homey.error('BL.destroyLibrary', error);
-                } finally {
-                    this._l = null;
-                    for (const key of BLL_EXPORT_KEYS) {
-                        delete BL[key];
-                    }
-                }
             }
-            this.api = null;
+            if (!this._destroyed) this.api = null;
         };
 
         BL._defer = this._defer = new Defer();
@@ -461,11 +490,20 @@ class BL {
         try {
             version = await this.api.getVersion();
         } catch (error) {
+            if (this.l) throw error;
             this.homey.error('BL.getVersion', error);
         }
         BL.homey.log('initBll loading');
         if (this._destroyed || generation !== this._uninstallGeneration) return this;
-        if (this.l && version && version === BL._version && process.env.DEBUG !== '1') return this;
+        if (this.l) {
+            if (!version) throw new Error('Cannot compare Better Logic Library versions.');
+            if (!BL._version) {
+                compareVersions(version, version);
+                BL._version = version;
+                return this;
+            }
+            if (compareVersions(version, BL._version) <= 0) return this;
+        }
         BL.homey.log('initBll loading version change');
         //let bllFile = this.bllFile;
         try {
@@ -486,6 +524,11 @@ class BL {
         const initializing = Promise.resolve().then(async () => {
             if (this._destroyed || generation !== this._uninstallGeneration) return;
             try {
+                if (old_bll) {
+                    old_bll.destroy();
+                    this._l = null;
+                    for (const key of BLL_EXPORT_KEYS) delete BL[key];
+                }
                 const library = await new bll.BLL({ homey: this.homey, modules: this.modules, silent: this.silent });
                 if (this._destroyed || generation !== this._uninstallGeneration) {
                     library.destroy();
@@ -493,7 +536,6 @@ class BL {
                 }
                 this._l = library;
                 BL._L = bll.BLL;
-                if (old_bll) old_bll.destroy();
                 BL._version = version;
             } finally {
                 if (this._destroyed || generation !== this._uninstallGeneration) {

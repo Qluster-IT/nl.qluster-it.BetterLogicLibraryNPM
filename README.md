@@ -93,14 +93,16 @@ endpoint and the requested BLL bundle has loaded. The package subscribes to
 realtime events before probing, and the `api-ready` event only expedites a
 confirming endpoint request. Readiness checks are bounded to five requests,
 30-second retry intervals, and a two-minute deadline. Install/start events
-retry initialization; uninstall/stop events clear readiness and detach
-realtime updates. `bl.ready` resolves for the current availability cycle. After
+retry initialization; uninstall/stop events clear readiness and detach the
+wrapper's realtime listener, while already-loaded modules remain available
+(individual module functions may still require the BLL app).
+On restart they are reused unless a newer BLL version is detected, in which
+case they are destroyed and reloaded. `bl.ready` resolves for the current availability cycle. After
 BLL becomes unavailable, a resolved promise is replaced so callers can await the
 next successful load. The BLL app itself skips the endpoint handshake to avoid
 waiting for its own startup to finish.
 Homey's `unload` event removes all listeners without replacing your app's `onUninit`.
-The API remains available until loaded modules have removed their own realtime
-listeners during cleanup.
+Loaded modules keep their own listeners until a version update or final cleanup.
 Library-request deadlines and timed `Defer` promises cancel timers through their
 original Homey instance, also releasing the SDK's timer bookkeeping.
 

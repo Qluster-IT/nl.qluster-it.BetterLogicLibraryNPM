@@ -94,7 +94,7 @@ test('module cleanup retains API access until its realtime listeners have been r
         api.get = async uri => uri === '/api-ready' ? { ready: true } : ({
             file: `class BLL {
                 static get Current() { return this.current; }
-                constructor() { BLL.current = this; }
+                constructor({ silent }) { BLL.current = this; this.silent = silent; }
                 destroy() { BLL.current = null; }
             }
             module.exports = { BLL };`,
@@ -296,6 +296,27 @@ test('installation check errors leave BLL unready and allow a later retry', asyn
     api.getInstalled = async () => true;
     await bl.init();
     assert.equal(bl.isReady, true);
+});
+
+test('required false defaults to silent mode but explicit silent false overrides it', async (t) => {
+    t.after(() => BL.destroy());
+    for (const silent of [undefined, false]) {
+        const { homey, api } = createLifecycleHomey();
+        api.getInstalled = async () => false;
+        const bl = await BL.init({ homey, modules: ['_'], required: false, silent });
+        assert.equal(bl.silent, silent !== false);
+        assert.equal(await BL.decode('Value: {[1 + 1]}'), 'Value: {[1 + 1]}');
+        if (silent === false) await assert.rejects(BL.express('1 + 1'), /not loaded/);
+        else assert.equal(await BL.express('1 + 1'), '1 + 1');
+    }
+});
+
+test('explicit silent false is passed to the loaded BLL library even when not required', async (t) => {
+    const { homey } = createLifecycleHomey();
+    t.after(() => BL.destroy());
+    const bl = await BL.init({ homey, modules: ['_'], required: false, silent: false });
+    assert.equal(bl.isReady, true);
+    assert.equal(bl.l.silent, false);
 });
 
 test('express returns the expression when BLL is not installed in silent mode and throws for required apps', async (t) => {

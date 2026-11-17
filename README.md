@@ -69,6 +69,11 @@ These are just a few simple steps to start with the most basic: include the BLL 
 **There will be no error's thrown if BLL is not installed or not available**, if no modules are used, it is put on silent mode.
 Making it not required, but a bonus for users who wish to use BLL coding: If your app supports it, they just need to install BLL (which they already will have i guess).
 
+Passing `required: false` to `BL.init` defaults to silent mode, even with modules
+requested. An explicit `silent: false` overrides this default. In silent mode,
+when BLL is unavailable or decoding/evaluation fails, `BL.decode` and `BL.express`
+return the original text or expression.
+
 ## Decoder
 Now, to use the decoder, you do not need any modules loaded. The texts will be decoded by the BLL App, so **you do not need to include math.js or lodash into your app to support decoding**.
 

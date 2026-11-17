@@ -180,7 +180,7 @@ class BL {
      * @param {string[]} [options.modules] BLL modules to load.
      * @param {boolean} [options.silent] When true, BLL failures return the original text/expression instead of throwing. Defaults to true when no modules are loaded or BLL is not required.
      * @param {number} [options.waitTime] Wait-time setting passed to the BLL wrapper.
-     * @param {boolean} [options.required] Whether the app requires BLL.
+     * @param {boolean} [options.required] Whether the app requires BLL. Setting false defaults to silent mode unless silent is explicitly set.
      * @returns {Promise<BL>} The initialized BLL wrapper.
      */
     static async init({ homey, modules, silent, waitTime, required } = {}) {
@@ -254,7 +254,7 @@ class BL {
      * @param {string[]} [options.modules] BLL modules to load.
      * @param {boolean} [options.silent] When true, BLL failures return the original text/expression instead of throwing. Defaults to true when no modules are loaded or BLL is not required.
      * @param {number} [options.waitTime] Wait-time setting passed to the BLL wrapper.
-     * @param {boolean} [options.required] Whether the app requires BLL.
+     * @param {boolean} [options.required] Whether the app requires BLL. Setting false defaults to silent mode unless silent is explicitly set.
      */
     constructor({ homey, modules, silent, waitTime, required } = {}) {
         if (BL._current) return BL._current;
